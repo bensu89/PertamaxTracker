@@ -72,24 +72,26 @@ export default function Sidebar() {
             )}
 
             {/* Main Navigation */}
-            <nav className="sidebar-nav">
-                {mainNavItems.map((item) => {
-                    const isActive = pathname === item.href ||
-                        (item.href !== '/' && pathname.startsWith(item.href));
-                    const Icon = item.icon;
+            {!isAdmin && (
+                <nav className="sidebar-nav">
+                    {mainNavItems.map((item) => {
+                        const isActive = pathname === item.href ||
+                            (item.href !== '/' && pathname.startsWith(item.href));
+                        const Icon = item.icon;
 
-                    return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={`sidebar-item ${isActive ? 'active' : ''}`}
-                        >
-                            <Icon size={20} />
-                            <span>{item.label}</span>
-                        </Link>
-                    );
-                })}
-            </nav>
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`sidebar-item ${isActive ? 'active' : ''}`}
+                            >
+                                <Icon size={20} />
+                                <span>{item.label}</span>
+                            </Link>
+                        );
+                    })}
+                </nav>
+            )}
 
             {/* Admin Navigation */}
             {isAdmin && (

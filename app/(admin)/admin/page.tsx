@@ -6,11 +6,11 @@ import { useAuth } from '@/contexts';
 import { getSystemStats } from '@/lib/services/admin';
 import type { SystemStats } from '@/lib/types/admin';
 import { formatRupiah, formatNumber } from '@/lib/utils';
-import { Users, Car, Fuel, Wallet, TrendingUp, Activity } from 'lucide-react';
+import { Users, Car, Fuel, Wallet, TrendingUp, Activity, Settings, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function AdminDashboardPage() {
-    const { user, isAdmin, loading: authLoading } = useAuth();
+    const { user, isAdmin, loading: authLoading, logout } = useAuth();
     const router = useRouter();
     const [stats, setStats] = useState<SystemStats | null>(null);
     const [loading, setLoading] = useState(true);
@@ -70,7 +70,135 @@ export default function AdminDashboardPage() {
                     }}
                 >
                     {/* Total Users */}
-                    <div className="card-elevated">
+                    <div
+                        className="card-elevated"
+                        onClick={() => router.push('/admin/users')}
+                        style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-3)' }}>
+                            <div style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: 'var(--radius-md)',
+                                background: 'var(--primary-light)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <Users size={24} style={{ color: 'var(--primary)' }} />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Total Users</div>
+                                <div className="stat-number-sm">{formatNumber(stats?.totalUsers || 0)}</div>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                            +{formatNumber(stats?.newUsersThisMonth || 0)} this month • Click to view
+                        </div>
+                    </div>
+
+                    {/* Total Vehicles */}
+                    <div
+                        className="card-elevated"
+                        onClick={() => router.push('/admin/vehicles')}
+                        style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-3)' }}>
+                            <div style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: 'var(--radius-md)',
+                                background: 'var(--secondary-light)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <Car size={24} style={{ color: 'var(--secondary)' }} />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Total Vehicles</div>
+                                <div className="stat-number-sm">{formatNumber(stats?.totalVehicles || 0)}</div>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                            Tracked across all users • Click to view
+                        </div>
+                    </div>
+
+                    {/* Total Entries */}
+                    <div
+                        className="card-elevated"
+                        onClick={() => router.push('/admin/fuel-entries')}
+                        style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-3)' }}>
+                            <div style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: 'var(--radius-md)',
+                                background: 'var(--warning-light)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <Fuel size={24} style={{ color: 'var(--warning)' }} />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Fuel Entries</div>
+                                <div className="stat-number-sm">{formatNumber(stats?.totalFuelEntries || 0)}</div>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                            All-time total • Click to view per user
+                        </div>
+                    </div>
+
+                    {/* Total Spending */}
+                    <div
+                        className="card-elevated"
+                        onClick={() => router.push('/admin/spending')}
+                        style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-3)' }}>
+                            <div style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: 'var(--radius-md)',
+                                background: 'rgba(34, 197, 94, 0.15)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <Wallet size={24} style={{ color: '#22C55E' }} />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Total Spending</div>
+                                <div className="stat-number-sm" style={{ fontSize: '20px' }}>
+                                    {formatRupiah(stats?.totalSpending || 0)}
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                            System-wide • Click to view per user
+                        </div>
+                    </div>
+
+                    {/* Active Users */}
+                    <div
+                        className="card-elevated"
+                        onClick={() => router.push('/admin/active-users')}
+                        style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-3)' }}>
                             <div style={{
                                 width: '48px',
@@ -93,106 +221,14 @@ export default function AdminDashboardPage() {
                         </div>
                     </div>
 
-                    {/* Total Vehicles */}
-                    <div className="card-elevated">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-3)' }}>
-                            <div style={{
-                                width: '48px',
-                                height: '48px',
-                                borderRadius: 'var(--radius-md)',
-                                background: 'var(--secondary-light)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                <Car size={24} style={{ color: 'var(--secondary)' }} />
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Total Vehicles</div>
-                                <div className="stat-number-sm">{formatNumber(stats?.totalVehicles || 0)}</div>
-                            </div>
-                        </div>
-                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                            Tracked across all users
-                        </div>
-                    </div>
-
-                    {/* Total Entries */}
-                    <div className="card-elevated">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-3)' }}>
-                            <div style={{
-                                width: '48px',
-                                height: '48px',
-                                borderRadius: 'var(--radius-md)',
-                                background: 'var(--warning-light)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                <Fuel size={24} style={{ color: 'var(--warning)' }} />
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Fuel Entries</div>
-                                <div className="stat-number-sm">{formatNumber(stats?.totalFuelEntries || 0)}</div>
-                            </div>
-                        </div>
-                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                            All-time total
-                        </div>
-                    </div>
-
-                    {/* Total Spending */}
-                    <div className="card-elevated">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-3)' }}>
-                            <div style={{
-                                width: '48px',
-                                height: '48px',
-                                borderRadius: 'var(--radius-md)',
-                                background: 'rgba(34, 197, 94, 0.15)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                <Wallet size={24} style={{ color: '#22C55E' }} />
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Total Spending</div>
-                                <div className="stat-number-sm" style={{ fontSize: '20px' }}>
-                                    {formatRupiah(stats?.totalSpending || 0)}
-                                </div>
-                            </div>
-                        </div>
-                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                            System-wide
-                        </div>
-                    </div>
-
-                    {/* Active Users */}
-                    <div className="card-elevated">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-3)' }}>
-                            <div style={{
-                                width: '48px',
-                                height: '48px',
-                                borderRadius: 'var(--radius-md)',
-                                background: 'rgba(6, 182, 212, 0.15)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                <Activity size={24} style={{ color: '#06B6D4' }} />
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Active Users</div>
-                                <div className="stat-number-sm">{formatNumber(stats?.activeUsers || 0)}</div>
-                            </div>
-                        </div>
-                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                            Last 30 days
-                        </div>
-                    </div>
-
                     {/* Avg Entries per User */}
-                    <div className="card-elevated">
+                    <div
+                        className="card-elevated"
+                        onClick={() => router.push('/admin/users')}
+                        style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-3)' }}>
                             <div style={{
                                 width: '48px',
@@ -216,7 +252,7 @@ export default function AdminDashboardPage() {
                             </div>
                         </div>
                         <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                            User engagement metric
+                            User engagement metric • Click to view users
                         </div>
                     </div>
                 </div>
@@ -240,6 +276,27 @@ export default function AdminDashboardPage() {
                         >
                             <TrendingUp size={18} />
                             View Insights
+                        </button>
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => router.push('/settings')}
+                        >
+                            <Settings size={18} />
+                            Pengaturan
+                        </button>
+                        <button
+                            className="btn btn-danger"
+                            onClick={async () => {
+                                try {
+                                    await logout();
+                                    router.push('/login');
+                                } catch (error) {
+                                    console.error('Logout error:', error);
+                                }
+                            }}
+                        >
+                            <LogOut size={18} />
+                            Keluar
                         </button>
                     </div>
                 </div>

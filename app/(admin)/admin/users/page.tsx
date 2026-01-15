@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts';
 import { getAllUsersStats, setUserRole } from '@/lib/services/admin';
 import type { UserStats } from '@/lib/types/admin';
 import { formatRupiah, formatNumber, formatDate } from '@/lib/utils';
-import { Users, Search, Shield, ShieldOff, Car, Fuel, Wallet } from 'lucide-react';
+import { Users, Search, Shield, ShieldOff, Car, Fuel, Wallet, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function AdminUsersPage() {
@@ -86,7 +86,18 @@ export default function AdminUsersPage() {
 
     return (
         <div className="page">
-            <PageHeader title="User Management" />
+            <PageHeader
+                title="User Management"
+                leftContent={
+                    <button
+                        className="btn btn-ghost btn-icon"
+                        onClick={() => router.push('/admin')}
+                        aria-label="Back to Admin Dashboard"
+                    >
+                        <ArrowLeft size={20} />
+                    </button>
+                }
+            />
 
             <div className="page-content">
                 {/* Search */}

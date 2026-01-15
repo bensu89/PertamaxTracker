@@ -20,9 +20,11 @@ import {
 import type { Vehicle, FuelEntry } from '@/lib/types';
 import { getGreeting, getCurrentPeriod, formatNumber, getFuelTypeName } from '@/lib/utils';
 import { calculateEstimatedDistance } from '@/lib/calculations';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
-    const { user } = useAuth();
+    const { user, isAdmin } = useAuth();
+    const router = useRouter();
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
     const [monthlyEntries, setMonthlyEntries] = useState<FuelEntry[]>([]);
@@ -36,6 +38,13 @@ export default function DashboardPage() {
 
     const greeting = getGreeting();
     const period = getCurrentPeriod();
+
+    // Redirect admin to admin dashboard
+    useEffect(() => {
+        if (isAdmin) {
+            router.push('/admin');
+        }
+    }, [isAdmin, router]);
 
     useEffect(() => {
         async function fetchData() {
