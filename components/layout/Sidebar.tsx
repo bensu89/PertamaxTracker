@@ -10,7 +10,8 @@ import {
     BarChart3,
     Settings,
     LogOut,
-    Droplets
+    Droplets,
+    Shield
 } from 'lucide-react';
 import { useAuth } from '@/contexts';
 
@@ -29,7 +30,7 @@ const bottomNavItems = [
 export default function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
-    const { logout, user } = useAuth();
+    const { logout, user, isAdmin } = useAuth();
 
     const handleLogout = async () => {
         try {
@@ -89,6 +90,37 @@ export default function Sidebar() {
                     );
                 })}
             </nav>
+
+            {/* Admin Navigation */}
+            {isAdmin && (
+                <>
+                    <div style={{
+                        height: '1px',
+                        background: 'var(--border)',
+                        margin: 'var(--space-3) 0'
+                    }} />
+                    <div style={{
+                        padding: '0 var(--space-4)',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: 'var(--text-muted)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        marginBottom: 'var(--space-2)'
+                    }}>
+                        Admin
+                    </div>
+                    <nav className="sidebar-nav">
+                        <Link
+                            href="/admin"
+                            className={`sidebar-item ${pathname.startsWith('/admin') ? 'active' : ''}`}
+                        >
+                            <Shield size={20} />
+                            <span>Admin Dashboard</span>
+                        </Link>
+                    </nav>
+                </>
+            )}
 
             {/* Bottom Navigation */}
             <div className="sidebar-nav" style={{ marginTop: 'auto' }}>

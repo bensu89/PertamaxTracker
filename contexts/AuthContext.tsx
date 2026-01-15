@@ -12,13 +12,15 @@ import {
     signInWithPopup,
     sendPasswordResetEmail
 } from 'firebase/auth';
-import { auth, isFirebaseAvailable } from '@/lib/firebase';
+import { auth, db, isFirebaseAvailable } from '@/lib/firebase';
+import { doc, getDoc, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
 
 interface AuthContextType {
     user: User | null;
     loading: boolean;
     error: string | null;
     isConfigured: boolean;
+    isAdmin: boolean;
     login: (email: string, password: string) => Promise<void>;
     register: (email: string, password: string, displayName: string) => Promise<void>;
     logout: () => Promise<void>;
@@ -33,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
         // If Firebase is not configured, stop loading and allow demo mode
@@ -41,8 +44,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setUser(user);
+
+            // Check if user is admin
+            if (user && db) {
+                try {
+                    const userDocRef = doc(db, 'users', user.uid);
+                    const userDoc = await getDoc(userDocRef);
+
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        setIsAdmin(userData.role === 'admin');
+
+                        // Update lastActive
+                        await updateDoc(userDocRef, {
+                            lastActive: Timestamp.now()
+                        });
+                    } else {
+                        // Create user document if it doesn't exist
+                        await setDoc(userDocRef, {
+                            email: user.email,
+                            displayName: user.displayName || '',
+                            photoURL: user.photoURL || '',
+                            role: 'user',
+                            createdAt: Timestamp.now(),
+                            updatedAt: Timestamp.now(),
+                            lastActive: Timestamp.now()
+                        });
+                        setIsAdmin(false);
+                    }
+                } catch (err) {
+                    console.error('Error fetching user role:', err);
+                    setIsAdmin(false);
+                }
+            } else {
+                setIsAdmin(false);
+            }
+
             setLoading(false);
         });
 
@@ -145,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             loading,
             error,
             isConfigured: isFirebaseAvailable,
+            isAdmin,
             login,
             register,
             logout,
