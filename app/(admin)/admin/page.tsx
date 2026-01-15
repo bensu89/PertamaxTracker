@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts';
 import { getSystemStats } from '@/lib/services/admin';
 import type { SystemStats } from '@/lib/types/admin';
 import { formatRupiah, formatNumber } from '@/lib/utils';
-import { Users, Car, Fuel, Wallet, TrendingUp, Activity, Settings, LogOut } from 'lucide-react';
+import { Users, Car, Fuel, Wallet, TrendingUp, Activity, Settings, LogOut, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function AdminDashboardPage() {
@@ -22,22 +22,41 @@ export default function AdminDashboardPage() {
         }
     }, [user, isAdmin, authLoading, router]);
 
-    useEffect(() => {
-        async function fetchStats() {
-            if (!user || !isAdmin) return;
+    // Auto-refresh interval (30 seconds)
+    const REFRESH_INTERVAL = 30000;
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-            try {
-                setLoading(true);
-                const data = await getSystemStats();
-                setStats(data);
-            } catch (err) {
-                console.error('Error fetching admin stats:', err);
-            } finally {
-                setLoading(false);
-            }
+    const fetchStats = async () => {
+        if (!user || !isAdmin) return;
+
+        try {
+            const data = await getSystemStats();
+            setStats(data);
+            setLastUpdated(new Date());
+        } catch (err) {
+            console.error('Error fetching admin stats:', err);
+        } finally {
+            setLoading(false);
         }
+    };
 
-        fetchStats();
+    // Initial fetch
+    useEffect(() => {
+        if (user && isAdmin) {
+            setLoading(true);
+            fetchStats();
+        }
+    }, [user, isAdmin]);
+
+    // Auto-refresh
+    useEffect(() => {
+        if (!user || !isAdmin) return;
+
+        const interval = setInterval(() => {
+            fetchStats();
+        }, REFRESH_INTERVAL);
+
+        return () => clearInterval(interval);
     }, [user, isAdmin]);
 
     if (authLoading || loading) {
@@ -57,7 +76,29 @@ export default function AdminDashboardPage() {
 
     return (
         <div className="page">
-            <PageHeader title="Admin Dashboard" />
+            <PageHeader
+                title="Admin Dashboard"
+                rightContent={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                        {lastUpdated && (
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                Updated: {lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        )}
+                        <button
+                            className="btn btn-ghost btn-icon"
+                            onClick={() => {
+                                setLoading(true);
+                                fetchStats();
+                            }}
+                            title="Refresh data"
+                            style={{ padding: '6px' }}
+                        >
+                            <RefreshCw size={18} />
+                        </button>
+                    </div>
+                }
+            />
 
             <div className="page-content">
                 {/* System Stats Grid */}
