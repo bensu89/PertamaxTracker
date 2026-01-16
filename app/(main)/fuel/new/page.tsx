@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/layout';
-import { FuelForm } from '@/components/fuel';
+import { FuelForm, ReceiptScanner } from '@/components/fuel';
 import { useAuth } from '@/contexts';
 import { getVehicles, getLatestFuelEntry, createFuelEntry } from '@/lib/services';
 import type { Vehicle, FuelEntry, FuelEntryFormData } from '@/lib/types';
+import type { ExtractedReceiptData } from '@/lib/services/receiptOcr';
 
 export default function NewFuelEntryPage() {
     const router = useRouter();
@@ -16,6 +17,17 @@ export default function NewFuelEntryPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [scannedData, setScannedData] = useState<Partial<FuelEntryFormData> | undefined>();
+
+    // Handle receipt scan data
+    const handleReceiptScanned = (data: ExtractedReceiptData) => {
+        const formData: Partial<FuelEntryFormData> = {};
+        if (data.liters) formData.liters = data.liters;
+        if (data.totalPrice) formData.totalPrice = data.totalPrice;
+        if (data.fuelType) formData.fuelType = data.fuelType;
+        if (data.date) formData.date = data.date;
+        setScannedData(formData);
+    };
 
     useEffect(() => {
         async function fetchData() {
@@ -131,10 +143,17 @@ export default function NewFuelEntryPage() {
                     </div>
                 )}
 
+                {/* Receipt Scanner */}
+                <ReceiptScanner
+                    onDataExtracted={handleReceiptScanned}
+                    onError={(err) => console.error('Scan error:', err)}
+                />
+
                 <div className="card" style={{ padding: 'var(--space-6)' }}>
                     <FuelForm
                         vehicles={vehicles}
                         previousEntry={previousEntry}
+                        initialData={scannedData}
                         onSubmit={handleSubmit}
                         onCancel={handleCancel}
                         onVehicleChange={handleVehicleChange}

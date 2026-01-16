@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
     Calendar as CalendarIcon,
     Gauge,
@@ -17,6 +17,7 @@ import { calculatePricePerLiter, calculateDistance, calculateEfficiency } from '
 interface FuelFormProps {
     vehicles: Vehicle[];
     previousEntry?: FuelEntry;
+    initialData?: Partial<FuelEntryFormData>;
     onSubmit: (data: FuelEntryFormData) => void;
     onCancel?: () => void;
     onVehicleChange?: (vehicleId: string) => void;
@@ -34,6 +35,7 @@ const fuelTypes: { value: FuelType; label: string }[] = [
 export default function FuelForm({
     vehicles,
     previousEntry,
+    initialData,
     onSubmit,
     onCancel,
     onVehicleChange,
@@ -56,6 +58,31 @@ export default function FuelForm({
     const [lastEdited, setLastEdited] = useState<'total' | 'perLiter'>('total');
 
     const [errors, setErrors] = useState<Partial<Record<keyof FuelEntryFormData, string>>>({});
+
+    // Update form when initialData from receipt scanner changes
+    useEffect(() => {
+        if (initialData) {
+            // Ensure liters is a proper number (convert comma to dot if needed)
+            const litersValue = initialData.liters
+                ? parseFloat(String(initialData.liters).replace(',', '.'))
+                : undefined;
+
+            setFormData(prev => ({
+                ...prev,
+                ...initialData,
+                // Override liters with properly parsed value
+                liters: litersValue ?? prev.liters,
+                // Keep vehicleId from active vehicle if not provided
+                vehicleId: initialData.vehicleId || prev.vehicleId,
+                // Keep date as today if not provided
+                date: initialData.date || prev.date,
+            }));
+            // Also update pricePerLiter display if totalPrice and liters are provided
+            if (initialData.totalPrice && litersValue && litersValue > 0) {
+                setPricePerLiter(Math.round(initialData.totalPrice / litersValue));
+            }
+        }
+    }, [initialData]);
 
     // Handle liters change - recalculate based on which price field was edited last
     const handleLitersChange = (liters: number) => {
@@ -225,7 +252,8 @@ export default function FuelForm({
                             value={formData.liters || ''}
                             onChange={(e) => handleLitersChange(parseFloat(e.target.value) || 0)}
                             min={0}
-                            step={0.1}
+                            step="any"
+                            lang="en"
                         />
                     </div>
                     {errors.liters && (
