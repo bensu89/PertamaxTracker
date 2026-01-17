@@ -357,7 +357,17 @@ export default function AdminFuelEntriesPage() {
                                                             <div>
                                                                 <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Tanggal</div>
                                                                 <div style={{ fontWeight: 500 }}>
-                                                                    {new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                                    {(() => {
+                                                                        let date: Date;
+                                                                        if (entry.date instanceof Date) {
+                                                                            date = entry.date;
+                                                                        } else if (typeof (entry.date as any)?.toDate === 'function') {
+                                                                            date = (entry.date as any).toDate();
+                                                                        } else {
+                                                                            date = new Date(entry.date);
+                                                                        }
+                                                                        return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                                                                    })()}
                                                                 </div>
                                                             </div>
                                                             <div>
