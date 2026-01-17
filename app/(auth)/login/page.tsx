@@ -67,7 +67,7 @@ export default function LoginPage() {
                         </span>
                     </div>
                     <p className="text-muted">
-                        Masuk untuk melacak konsumsi BBM Anda
+                        Bensin naik-turun, dompet jangan ikut bingung!
                     </p>
                 </div>
 
