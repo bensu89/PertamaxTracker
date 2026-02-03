@@ -8,45 +8,45 @@
    ============================================ */
 
 :root {
-  /* Background Colors */
-  --background: #0A0A0B;
-  --surface: #141416;
-  --surface-elevated: #1C1C1F;
+  /* Background Colors - Warm Sand Theme */
+  --background: #FFFBEB;
+  --surface: #FEF3C7;
+  --surface-elevated: #FDE68A;
 
   /* Primary Colors */
-  --primary: #22C55E;
-  --primary-hover: #16A34A;
-  --primary-light: rgba(34, 197, 94, 0.15);
+  --primary: #D97706;
+  --primary-hover: #B45309;
+  --primary-light: rgba(217, 119, 6, 0.15);
 
   /* Secondary Colors */
-  --secondary: #06B6D4;
-  --secondary-light: rgba(6, 182, 212, 0.15);
+  --secondary: #0891B2;
+  --secondary-light: rgba(8, 145, 178, 0.15);
 
   /* Semantic Colors */
-  --warning: #F59E0B;
-  --warning-light: rgba(245, 158, 11, 0.15);
-  --danger: #EF4444;
-  --danger-light: rgba(239, 68, 68, 0.15);
-  --success: #22C55E;
+  --warning: #EA580C;
+  --warning-light: rgba(234, 88, 12, 0.15);
+  --danger: #DC2626;
+  --danger-light: rgba(220, 38, 38, 0.15);
+  --success: #16A34A;
 
   /* Text Colors */
-  --text-primary: #FAFAFA;
-  --text-secondary: #A1A1AA;
-  --text-muted: #71717A;
+  --text-primary: #78350F;
+  --text-secondary: #92400E;
+  --text-muted: #A16207;
 
   /* Border Colors */
-  --border: #27272A;
-  --border-light: rgba(255, 255, 255, 0.1);
+  --border: #D97706;
+  --border-light: rgba(120, 53, 15, 0.2);
 
   /* Shadows */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 2px 8px rgba(120, 53, 15, 0.1);
+  --shadow-md: 0 4px 16px rgba(120, 53, 15, 0.15);
+  --shadow-lg: 0 8px 32px rgba(120, 53, 15, 0.2);
 
   /* Glassmorphism */
-  --glass-bg: rgba(28, 28, 31, 0.8);
+  --glass-bg: rgba(254, 243, 199, 0.9);
   --glass-blur: blur(20px);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+  --glass-border: 1px solid rgba(120, 53, 15, 0.2);
 
   /* Border Radius */
   --radius-sm: 8px;
@@ -223,13 +223,13 @@ h4 {
 
 .btn-primary {
   background: var(--primary);
-  color: #000;
+  color: #FFFFFF;
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
 }
 
 .btn-secondary {
@@ -284,20 +284,20 @@ h4 {
   height: 48px;
   border-radius: var(--radius-full);
   background: var(--primary);
-  color: #000;
+  color: #FFFFFF;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 4px 20px rgba(217, 119, 6, 0.4);
   transition: all var(--transition-normal);
   z-index: 100;
 }
 
 .fab:hover {
   transform: scale(1.1);
-  box-shadow: 0 6px 28px rgba(34, 197, 94, 0.5);
+  box-shadow: 0 6px 28px rgba(217, 119, 6, 0.5);
 }
 
 /* ============================================

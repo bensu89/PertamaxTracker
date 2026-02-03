@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Eye, EyeOff, Droplets, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Flame, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts';
 
 export default function LoginPage() {
@@ -61,7 +61,7 @@ export default function LoginPage() {
                         gap: 'var(--space-3)',
                         marginBottom: 'var(--space-4)'
                     }}>
-                        <Droplets size={40} style={{ color: 'var(--primary)' }} />
+                        <Flame size={40} style={{ color: 'var(--primary)' }} />
                         <span style={{ fontSize: '28px', fontWeight: 700 }}>
                             <span style={{ color: 'var(--primary)' }}>Pertamax</span>Tracker
                         </span>

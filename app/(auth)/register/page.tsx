@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Eye, EyeOff, User, Droplets, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, Flame, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts';
 
 export default function RegisterPage() {
@@ -82,7 +82,7 @@ export default function RegisterPage() {
                         gap: 'var(--space-3)',
                         marginBottom: 'var(--space-3)'
                     }}>
-                        <Droplets size={36} style={{ color: 'var(--primary)' }} />
+                        <Flame size={36} style={{ color: 'var(--primary)' }} />
                         <span style={{ fontSize: '24px', fontWeight: 700 }}>
                             <span style={{ color: 'var(--primary)' }}>Pertamax</span>Tracker
                         </span>
