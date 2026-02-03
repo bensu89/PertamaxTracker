@@ -349,7 +349,7 @@ export default function AdminFuelEntriesPage() {
                                                         <span style={{ fontWeight: 600 }}>{fuelType}</span>
                                                         <span style={{ color: 'var(--text-muted)' }}>•</span>
                                                         <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--warning)' }}>
-                                                            {formatNumber(liters, 1)} L
+                                                            {formatNumber(liters, 2)} L
                                                         </span>
                                                     </div>
                                                 ))

@@ -76,7 +76,7 @@ export function formatDistance(km: number): string {
  * Format liters
  */
 export function formatLiters(liters: number): string {
-    return `${formatNumber(liters, 1)} L`;
+    return `${formatNumber(liters, 2)} L`;
 }
 
 /**

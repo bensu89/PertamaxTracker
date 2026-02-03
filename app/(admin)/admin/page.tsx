@@ -442,7 +442,7 @@ export default function AdminDashboardPage() {
                                                 {activity.userName}
                                             </div>
                                             <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                                                Added {formatNumber(activity.liters || 0, 1)}L {activity.fuelType}
+                                                Added {formatNumber(activity.liters || 0, 2)}L {activity.fuelType}
                                             </div>
                                         </div>
                                         <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'right', flexShrink: 0 }}>
