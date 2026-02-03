@@ -98,22 +98,28 @@ export default function FuelForm({
         }
     };
 
-    // Handle price per liter change
+    // Handle price per liter change - ALWAYS calculate liters if totalPrice exists
     const handlePricePerLiterChange = (ppl: number) => {
         setPricePerLiter(ppl);
         setLastEdited('perLiter');
-        if (formData.liters > 0) {
-            const total = Math.round(formData.liters * ppl);
-            setFormData({ ...formData, totalPrice: total });
+
+        if (formData.totalPrice > 0 && ppl > 0) {
+            // Always calculate liters from total price and price per liter
+            const liters = parseFloat((formData.totalPrice / ppl).toFixed(2));
+            setFormData({ ...formData, liters });
         }
     };
 
-    // Handle total price change
+    // Handle total price change - ALWAYS calculate liters if pricePerLiter exists
     const handleTotalPriceChange = (total: number) => {
-        setFormData({ ...formData, totalPrice: total });
         setLastEdited('total');
-        if (formData.liters > 0) {
-            setPricePerLiter(Math.round(total / formData.liters));
+
+        if (pricePerLiter > 0 && total > 0) {
+            // Always calculate liters from total price and price per liter
+            const liters = parseFloat((total / pricePerLiter).toFixed(2));
+            setFormData({ ...formData, totalPrice: total, liters });
+        } else {
+            setFormData({ ...formData, totalPrice: total });
         }
     };
 
@@ -292,7 +298,7 @@ export default function FuelForm({
                             min={0}
                         />
                     </div>
-                    <span className="input-hint">Isi untuk auto-hitung total</span>
+                    <span className="input-hint">Otomatis hitung liter atau total</span>
                 </div>
 
                 <div className="input-group">
