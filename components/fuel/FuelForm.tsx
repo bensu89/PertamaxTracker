@@ -147,10 +147,9 @@ export default function FuelForm({
             newErrors.vehicleId = 'Pilih kendaraan';
         }
 
-        if (formData.odometer <= 0) {
-            newErrors.odometer = 'Odometer harus lebih dari 0';
-        } else if (previousEntry && formData.odometer <= previousEntry.odometer) {
-            newErrors.odometer = `Odometer harus lebih dari ${formatNumber(previousEntry.odometer)} km`;
+        // Odometer is optional - no strict validation since it can be reset manually
+        if (formData.odometer < 0) {
+            newErrors.odometer = 'Odometer tidak boleh negatif';
         }
 
         if (formData.liters <= 0) {
@@ -226,24 +225,22 @@ export default function FuelForm({
 
             {/* Odometer */}
             <div className="input-group">
-                <label className="input-label">Odometer (KM)</label>
+                <label className="input-label">Odometer (KM) - Opsional</label>
                 <div className="input-icon">
                     <Gauge size={18} className="icon" />
                     <input
                         type="number"
                         className="input"
-                        placeholder="45350"
+                        placeholder="0"
                         value={formData.odometer || ''}
                         onChange={(e) => setFormData({ ...formData, odometer: parseInt(e.target.value) || 0 })}
                         min={0}
                     />
                 </div>
-                {previousEntry && (
-                    <span className="input-hint flex items-center gap-1">
-                        <Info size={12} />
-                        Terakhir: {formatNumber(previousEntry.odometer)} km ({formatDate(previousEntry.date instanceof Date ? previousEntry.date : new Date(previousEntry.date))})
-                    </span>
-                )}
+                <span className="input-hint flex items-center gap-1">
+                    <Info size={12} />
+                    Bisa dikosongkan jika odometer di-reset manual
+                </span>
                 {errors.odometer && (
                     <span style={{ color: 'var(--danger)', fontSize: '12px' }}>{errors.odometer}</span>
                 )}
@@ -323,63 +320,6 @@ export default function FuelForm({
                     )}
                 </div>
             </div>
-
-            {/* Full Tank Checkbox */}
-            <label className="checkbox-wrapper">
-                <input
-                    type="checkbox"
-                    className="checkbox"
-                    checked={formData.isFullTank}
-                    onChange={(e) => setFormData({ ...formData, isFullTank: e.target.checked })}
-                />
-                <span className="flex items-center gap-2">
-                    <CheckSquare size={16} style={{ color: formData.isFullTank ? 'var(--primary)' : 'var(--text-muted)' }} />
-                    Isi Penuh (Full Tank)
-                </span>
-            </label>
-            <span className="input-hint">
-                Centang jika tangki diisi penuh untuk perhitungan efisiensi yang akurat
-            </span>
-
-            {/* Calculations Preview */}
-            {(calculations.pricePerLiter > 0 || calculations.distance > 0) && (
-                <div
-                    className="card"
-                    style={{
-                        background: 'var(--primary-light)',
-                        borderColor: 'var(--primary)',
-                        marginTop: 'var(--space-2)'
-                    }}
-                >
-                    <h4 style={{ fontSize: '13px', fontWeight: 600, marginBottom: 'var(--space-3)', color: 'var(--primary)' }}>
-                        📊 Perhitungan Otomatis
-                    </h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)', fontSize: '13px' }}>
-                        <div>
-                            <div className="text-muted" style={{ fontSize: '11px' }}>Harga/Liter</div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                                {formatRupiah(calculations.pricePerLiter)}
-                            </div>
-                        </div>
-                        {calculations.distance > 0 && (
-                            <div>
-                                <div className="text-muted" style={{ fontSize: '11px' }}>Jarak</div>
-                                <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                                    {formatNumber(calculations.distance)} km
-                                </div>
-                            </div>
-                        )}
-                        {calculations.efficiency > 0 && (
-                            <div>
-                                <div className="text-muted" style={{ fontSize: '11px' }}>Efisiensi</div>
-                                <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--primary)' }}>
-                                    {formatNumber(calculations.efficiency, 2)} km/L
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
 
             {/* Actions */}
             <div className="flex gap-3" style={{ marginTop: 'var(--space-4)' }}>

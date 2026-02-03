@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/layout';
 import { useAuth } from '@/contexts';
 import { db } from '@/lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, deleteDoc, query, where, writeBatch } from 'firebase/firestore';
 import { formatNumber } from '@/lib/utils';
-import { ArrowLeft, Car, User, Calendar } from 'lucide-react';
+import { ArrowLeft, Car, User, Calendar, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface VehicleWithOwner {
@@ -26,6 +26,7 @@ export default function AdminVehiclesPage() {
     const router = useRouter();
     const [vehicles, setVehicles] = useState<VehicleWithOwner[]>([]);
     const [loading, setLoading] = useState(true);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!user || !isAdmin) {
@@ -80,10 +81,48 @@ export default function AdminVehiclesPage() {
         fetchVehicles();
     }, [user, isAdmin, router]);
 
+    const handleDeleteVehicle = async (vehicle: VehicleWithOwner) => {
+        if (!confirm(`Apakah Anda yakin ingin menghapus kendaraan "${vehicle.name}" (${vehicle.plateNumber})?\n\nSemua riwayat pengisian BBM untuk kendaraan ini juga akan dihapus.\n\nTindakan ini tidak dapat dibatalkan!`)) {
+            return;
+        }
+
+        try {
+            setDeletingId(vehicle.id);
+            if (!db) throw new Error('Firestore not initialized');
+
+            const batch = writeBatch(db);
+
+            // Delete all fuel entries for this vehicle
+            const entriesQuery = query(
+                collection(db, 'fuelEntries'),
+                where('vehicleId', '==', vehicle.id)
+            );
+            const entriesSnap = await getDocs(entriesQuery);
+            entriesSnap.forEach(docSnap => {
+                batch.delete(doc(db!, 'fuelEntries', docSnap.id));
+            });
+
+            // Delete the vehicle
+            batch.delete(doc(db, 'vehicles', vehicle.id));
+
+            // Commit the batch
+            await batch.commit();
+
+            // Update local state
+            setVehicles(vehicles.filter(v => v.id !== vehicle.id));
+            alert('Kendaraan berhasil dihapus');
+        } catch (err) {
+            console.error('Error deleting vehicle:', err);
+            alert('Gagal menghapus kendaraan');
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
     if (loading) {
         return (
             <div className="page">
-                <PageHeader title="All Vehicles" />
+                <PageHeader title="Semua Kendaraan" />
                 <div className="page-content" style={{ display: 'flex', justifyContent: 'center', paddingTop: 'var(--space-8)' }}>
                     <div className="spinner" style={{ width: '32px', height: '32px' }} />
                 </div>
@@ -94,7 +133,7 @@ export default function AdminVehiclesPage() {
     return (
         <div className="page">
             <PageHeader
-                title={`All Vehicles (${formatNumber(vehicles.length)})`}
+                title={`Semua Kendaraan (${formatNumber(vehicles.length)})`}
                 leftContent={
                     <button
                         className="btn btn-ghost btn-icon"
@@ -109,8 +148,8 @@ export default function AdminVehiclesPage() {
                 {vehicles.length === 0 ? (
                     <div className="empty-state">
                         <Car className="empty-state-icon" />
-                        <h3 className="empty-state-title">No Vehicles</h3>
-                        <p className="empty-state-description">No vehicles have been registered yet</p>
+                        <h3 className="empty-state-title">Tidak Ada Kendaraan</h3>
+                        <p className="empty-state-description">Belum ada kendaraan yang terdaftar</p>
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
@@ -150,6 +189,32 @@ export default function AdminVehiclesPage() {
                                         <Calendar size={14} />
                                         <span>{vehicle.createdAt.toLocaleDateString('id-ID')}</span>
                                     </div>
+
+                                    {/* Delete Button */}
+                                    <button
+                                        onClick={() => handleDeleteVehicle(vehicle)}
+                                        disabled={deletingId === vehicle.id}
+                                        style={{
+                                            padding: 'var(--space-2)',
+                                            background: 'var(--danger-light)',
+                                            border: 'none',
+                                            borderRadius: 'var(--radius-md)',
+                                            color: 'var(--danger)',
+                                            cursor: deletingId === vehicle.id ? 'not-allowed' : 'pointer',
+                                            opacity: deletingId === vehicle.id ? 0.5 : 1,
+                                            transition: 'all var(--transition-fast)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}
+                                        title="Hapus Kendaraan"
+                                    >
+                                        {deletingId === vehicle.id ? (
+                                            <div className="spinner" style={{ width: '18px', height: '18px' }} />
+                                        ) : (
+                                            <Trash2 size={18} />
+                                        )}
+                                    </button>
                                 </div>
                             </div>
                         ))}
