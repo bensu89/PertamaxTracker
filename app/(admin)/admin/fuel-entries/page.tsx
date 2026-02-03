@@ -401,11 +401,15 @@ export default function AdminFuelEntriesPage() {
                                                             </div>
                                                             <div>
                                                                 <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Liter</div>
-                                                                <div style={{ fontWeight: 500, color: 'var(--warning)' }}>{formatNumber(entry.liters, 1)} L</div>
+                                                                <div style={{ fontWeight: 500, color: 'var(--warning)' }}>{formatNumber(entry.liters, 2)} L</div>
                                                             </div>
                                                             <div>
                                                                 <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Total</div>
                                                                 <div style={{ fontWeight: 500 }}>Rp {formatNumber(entry.totalPrice)}</div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Harga/L</div>
+                                                                <div style={{ fontWeight: 500, color: 'var(--primary)' }}>Rp {formatNumber(entry.pricePerLiter || (entry.liters > 0 ? Math.round(entry.totalPrice / entry.liters) : 0))}</div>
                                                             </div>
                                                             <div>
                                                                 <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>BBM</div>

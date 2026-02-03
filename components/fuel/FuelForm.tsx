@@ -168,7 +168,11 @@ export default function FuelForm({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (validate()) {
-            onSubmit(formData);
+            // Include pricePerLiter in the submitted data
+            onSubmit({
+                ...formData,
+                pricePerLiter: pricePerLiter > 0 ? pricePerLiter : undefined
+            });
         }
     };
 

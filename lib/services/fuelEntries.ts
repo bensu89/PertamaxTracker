@@ -104,8 +104,8 @@ export async function getLatestFuelEntry(userId: string, vehicleId: string): Pro
 export async function createFuelEntry(userId: string, data: FuelEntryFormData): Promise<string> {
     if (!db) throw new Error('Firestore not initialized');
 
-    // Calculate price per liter
-    const pricePerLiter = calculatePricePerLiter(data.totalPrice, data.liters);
+    // Use user-input pricePerLiter if provided, otherwise calculate
+    const pricePerLiter = data.pricePerLiter || calculatePricePerLiter(data.totalPrice, data.liters);
 
     // Get previous entry for distance and efficiency calculation
     const previousEntry = await getLatestFuelEntry(userId, data.vehicleId);

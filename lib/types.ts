@@ -87,6 +87,7 @@ export interface FuelEntryFormData {
   odometer: number;
   liters: number;
   totalPrice: number;
+  pricePerLiter?: number;
   fuelType: FuelType;
   isFullTank: boolean;
   notes?: string;
