@@ -1,5 +1,5 @@
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, query, where, orderBy, limit, Timestamp, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, query, where, orderBy, limit, Timestamp, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import type { UserStats, SystemStats } from '@/lib/types/admin';
 import type { UserRole } from '@/lib/types';
 
@@ -117,8 +117,11 @@ export async function getAllUsersStats(): Promise<UserStats[]> {
             const entryCount = entriesSnapshot.size;
 
             let totalSpending = 0;
+            let totalLiters = 0;
             entriesSnapshot.forEach(doc => {
-                totalSpending += doc.data().totalPrice || 0;
+                const data = doc.data();
+                totalSpending += data.totalPrice || 0;
+                totalLiters += data.liters || 0;
             });
 
             userStats.push({
@@ -130,7 +133,8 @@ export async function getAllUsersStats(): Promise<UserStats[]> {
                 lastActive: userData.lastActive,
                 vehicleCount,
                 entryCount,
-                totalSpending
+                totalSpending,
+                totalLiters
             });
         }
 
@@ -159,6 +163,45 @@ export async function setUserRole(userId: string, role: UserRole): Promise<void>
     }
 }
 
+/**
+ * Delete a user and all their related data (admin only)
+ */
+export async function deleteUser(userId: string): Promise<void> {
+    if (!db) throw new Error('Firestore not initialized');
+
+    try {
+        const batch = writeBatch(db);
+
+        // Delete all fuel entries for this user
+        const entriesQuery = query(
+            collection(db, FUEL_ENTRIES_COLLECTION),
+            where('userId', '==', userId)
+        );
+        const entriesSnap = await getDocs(entriesQuery);
+        entriesSnap.forEach(docSnap => {
+            batch.delete(doc(db!, FUEL_ENTRIES_COLLECTION, docSnap.id));
+        });
+
+        // Delete all vehicles for this user
+        const vehiclesQuery = query(
+            collection(db, VEHICLES_COLLECTION),
+            where('userId', '==', userId)
+        );
+        const vehiclesSnap = await getDocs(vehiclesQuery);
+        vehiclesSnap.forEach(docSnap => {
+            batch.delete(doc(db!, VEHICLES_COLLECTION, docSnap.id));
+        });
+
+        // Delete the user document
+        batch.delete(doc(db, USERS_COLLECTION, userId));
+
+        // Commit the batch
+        await batch.commit();
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        throw error;
+    }
+}
 /**
  * Get user growth data for charts (monthly)
  */

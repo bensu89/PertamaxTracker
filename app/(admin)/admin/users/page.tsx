@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/layout';
 import { useAuth } from '@/contexts';
-import { getAllUsersStats, setUserRole } from '@/lib/services/admin';
+import { getAllUsersStats, setUserRole, deleteUser } from '@/lib/services/admin';
 import type { UserStats } from '@/lib/types/admin';
 import { formatRupiah, formatNumber, formatDate } from '@/lib/utils';
-import { Users, Search, Shield, ShieldOff, Car, Fuel, Wallet, ArrowLeft } from 'lucide-react';
+import { Users, Search, Shield, ShieldOff, Car, Fuel, Wallet, ArrowLeft, Clock, Droplets, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function AdminUsersPage() {
@@ -16,6 +16,7 @@ export default function AdminUsersPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+    const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
     // Redirect if not admin
     useEffect(() => {
@@ -43,7 +44,7 @@ export default function AdminUsersPage() {
     }, [user, isAdmin]);
 
     const handleToggleAdmin = async (userId: string, currentRole: 'user' | 'admin') => {
-        if (!confirm(`Are you sure you want to ${currentRole === 'admin' ? 'remove' : 'grant'} admin privileges?`)) {
+        if (!confirm(`Apakah Anda yakin ingin ${currentRole === 'admin' ? 'mencabut' : 'memberikan'} hak admin?`)) {
             return;
         }
 
@@ -58,9 +59,29 @@ export default function AdminUsersPage() {
             ));
         } catch (err) {
             console.error('Error updating user role:', err);
-            alert('Failed to update user role');
+            alert('Gagal mengubah role pengguna');
         } finally {
             setUpdatingUserId(null);
+        }
+    };
+
+    const handleDeleteUser = async (userId: string, displayName: string) => {
+        if (!confirm(`Apakah Anda yakin ingin menghapus pengguna "${displayName}"?\n\nSemua data pengguna ini akan dihapus termasuk:\n- Kendaraan\n- Riwayat pengisian BBM\n\nTindakan ini tidak dapat dibatalkan!`)) {
+            return;
+        }
+
+        try {
+            setDeletingUserId(userId);
+            await deleteUser(userId);
+
+            // Remove from local state
+            setUsers(users.filter(u => u.userId !== userId));
+            alert('Pengguna berhasil dihapus');
+        } catch (err) {
+            console.error('Error deleting user:', err);
+            alert('Gagal menghapus pengguna');
+        } finally {
+            setDeletingUserId(null);
         }
     };
 
@@ -69,10 +90,37 @@ export default function AdminUsersPage() {
         u.displayName.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    // Get last active status text
+    const getLastActiveText = (lastActive?: { toDate: () => Date }) => {
+        if (!lastActive) return 'Belum pernah aktif';
+
+        const date = lastActive.toDate();
+        const now = new Date();
+        const diffHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+        if (diffHours < 1) return 'Aktif sekarang';
+        if (diffHours < 24) return 'Aktif hari ini';
+        if (diffHours < 168) return 'Minggu ini';
+        return formatDate(date);
+    };
+
+    const getLastActiveColor = (lastActive?: { toDate: () => Date }) => {
+        if (!lastActive) return 'var(--text-muted)';
+
+        const date = lastActive.toDate();
+        const now = new Date();
+        const diffHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+        if (diffHours < 1) return 'var(--success)';
+        if (diffHours < 24) return 'var(--primary)';
+        if (diffHours < 168) return 'var(--secondary)';
+        return 'var(--text-muted)';
+    };
+
     if (authLoading || loading) {
         return (
             <div className="page">
-                <PageHeader title="User Management" />
+                <PageHeader title="Kelola Pengguna" />
                 <div className="page-content" style={{ display: 'flex', justifyContent: 'center', paddingTop: 'var(--space-8)' }}>
                     <div className="spinner" style={{ width: '32px', height: '32px' }} />
                 </div>
@@ -87,12 +135,12 @@ export default function AdminUsersPage() {
     return (
         <div className="page">
             <PageHeader
-                title="User Management"
+                title="Kelola Pengguna"
                 leftContent={
                     <button
                         className="btn btn-ghost btn-icon"
                         onClick={() => router.push('/admin')}
-                        aria-label="Back to Admin Dashboard"
+                        aria-label="Kembali ke Dashboard Admin"
                     >
                         <ArrowLeft size={20} />
                     </button>
@@ -100,13 +148,32 @@ export default function AdminUsersPage() {
             />
 
             <div className="page-content">
+                {/* Summary Stats */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                    gap: 'var(--space-3)',
+                    marginBottom: 'var(--space-4)'
+                }}>
+                    <div className="card" style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: 'var(--space-1)' }}>Total Pengguna</div>
+                        <div style={{ fontSize: '24px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{users.length}</div>
+                    </div>
+                    <div className="card" style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: 'var(--space-1)' }}>Admin</div>
+                        <div style={{ fontSize: '24px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--warning)' }}>
+                            {users.filter(u => u.role === 'admin').length}
+                        </div>
+                    </div>
+                </div>
+
                 {/* Search */}
-                <div className="card" style={{ marginBottom: 'var(--space-6)', padding: 'var(--space-3)' }}>
+                <div className="card" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-3)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                         <Search size={18} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                         <input
                             type="text"
-                            placeholder="Search users by email or name..."
+                            placeholder="Cari berdasarkan email atau nama..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             style={{
@@ -126,9 +193,9 @@ export default function AdminUsersPage() {
                 {filteredUsers.length === 0 ? (
                     <div className="empty-state">
                         <Users className="empty-state-icon" />
-                        <h3 className="empty-state-title">No Users Found</h3>
+                        <h3 className="empty-state-title">Tidak Ada Pengguna</h3>
                         <p className="empty-state-description">
-                            {searchQuery ? 'Try a different search query' : 'No users registered yet'}
+                            {searchQuery ? 'Coba kata kunci pencarian lain' : 'Belum ada pengguna terdaftar'}
                         </p>
                     </div>
                 ) : (
@@ -137,7 +204,7 @@ export default function AdminUsersPage() {
                             <div key={userStats.userId} className="card-elevated">
                                 <div style={{
                                     display: 'flex',
-                                    alignItems: 'center',
+                                    alignItems: 'flex-start',
                                     gap: 'var(--space-4)',
                                     flexWrap: 'wrap'
                                 }}>
@@ -159,7 +226,17 @@ export default function AdminUsersPage() {
                                                 {userStats.displayName || 'Unknown'}
                                             </span>
                                             {userStats.role === 'admin' && (
-                                                <Shield size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />
+                                                <span style={{
+                                                    padding: '2px 8px',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    background: 'var(--warning)',
+                                                    color: 'var(--background)',
+                                                    fontSize: '10px',
+                                                    fontWeight: 700,
+                                                    textTransform: 'uppercase'
+                                                }}>
+                                                    Admin
+                                                </span>
                                             )}
                                         </div>
                                         <div style={{
@@ -171,37 +248,63 @@ export default function AdminUsersPage() {
                                         }}>
                                             {userStats.email}
                                         </div>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
-                                            Joined {formatDate(userStats.createdAt.toDate())}
+                                        <div style={{
+                                            display: 'flex',
+                                            flexWrap: 'wrap',
+                                            gap: 'var(--space-3)',
+                                            marginTop: 'var(--space-2)',
+                                            fontSize: '12px',
+                                            color: 'var(--text-muted)'
+                                        }}>
+                                            <span>Bergabung {formatDate(userStats.createdAt.toDate())}</span>
+                                            <span style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                color: getLastActiveColor(userStats.lastActive)
+                                            }}>
+                                                <Clock size={12} />
+                                                {getLastActiveText(userStats.lastActive)}
+                                            </span>
                                         </div>
                                     </div>
 
                                     {/* Stats */}
                                     <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
-                                        <div style={{ textAlign: 'center' }}>
+                                        <div style={{ textAlign: 'center', minWidth: '60px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', justifyContent: 'center', marginBottom: 'var(--space-1)' }}>
                                                 <Car size={14} style={{ color: 'var(--text-muted)' }} />
-                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Vehicles</span>
+                                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Kendaraan</span>
                                             </div>
                                             <div style={{ fontSize: '18px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
                                                 {userStats.vehicleCount}
                                             </div>
                                         </div>
 
-                                        <div style={{ textAlign: 'center' }}>
+                                        <div style={{ textAlign: 'center', minWidth: '60px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', justifyContent: 'center', marginBottom: 'var(--space-1)' }}>
                                                 <Fuel size={14} style={{ color: 'var(--text-muted)' }} />
-                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Entries</span>
+                                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Pengisian</span>
                                             </div>
                                             <div style={{ fontSize: '18px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
                                                 {userStats.entryCount}
                                             </div>
                                         </div>
 
-                                        <div style={{ textAlign: 'center' }}>
+                                        <div style={{ textAlign: 'center', minWidth: '60px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', justifyContent: 'center', marginBottom: 'var(--space-1)' }}>
+                                                <Droplets size={14} style={{ color: 'var(--warning)' }} />
+                                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Liter</span>
+                                            </div>
+                                            <div style={{ fontSize: '18px', fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'var(--warning)' }}>
+                                                {formatNumber(userStats.totalLiters, 1)}
+                                            </div>
+                                        </div>
+
+                                        <div style={{ textAlign: 'center', minWidth: '80px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', justifyContent: 'center', marginBottom: 'var(--space-1)' }}>
                                                 <Wallet size={14} style={{ color: 'var(--text-muted)' }} />
-                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Spending</span>
+                                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Pengeluaran</span>
                                             </div>
                                             <div style={{ fontSize: '14px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
                                                 {formatRupiah(userStats.totalSpending)}
@@ -210,11 +313,11 @@ export default function AdminUsersPage() {
                                     </div>
 
                                     {/* Actions */}
-                                    <div style={{ marginLeft: 'auto' }}>
+                                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 'var(--space-2)' }}>
                                         <button
                                             className={userStats.role === 'admin' ? 'btn btn-danger' : 'btn btn-secondary'}
                                             onClick={() => handleToggleAdmin(userStats.userId, userStats.role)}
-                                            disabled={updatingUserId === userStats.userId || userStats.userId === user.uid}
+                                            disabled={updatingUserId === userStats.userId || deletingUserId === userStats.userId || userStats.userId === user.uid}
                                             style={{ minWidth: '120px' }}
                                         >
                                             {updatingUserId === userStats.userId ? (
@@ -224,15 +327,28 @@ export default function AdminUsersPage() {
                                                     {userStats.role === 'admin' ? (
                                                         <>
                                                             <ShieldOff size={16} />
-                                                            Remove Admin
+                                                            Cabut Admin
                                                         </>
                                                     ) : (
                                                         <>
                                                             <Shield size={16} />
-                                                            Make Admin
+                                                            Jadikan Admin
                                                         </>
                                                     )}
                                                 </>
+                                            )}
+                                        </button>
+                                        <button
+                                            className="btn btn-ghost btn-icon"
+                                            style={{ color: 'var(--danger)' }}
+                                            onClick={() => handleDeleteUser(userStats.userId, userStats.displayName)}
+                                            disabled={updatingUserId === userStats.userId || deletingUserId === userStats.userId || userStats.userId === user.uid || userStats.role === 'admin'}
+                                            title={userStats.role === 'admin' ? 'Tidak dapat menghapus admin' : 'Hapus pengguna'}
+                                        >
+                                            {deletingUserId === userStats.userId ? (
+                                                <div className="spinner" style={{ width: '16px', height: '16px' }} />
+                                            ) : (
+                                                <Trash2 size={18} />
                                             )}
                                         </button>
                                     </div>

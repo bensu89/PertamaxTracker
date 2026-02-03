@@ -32,6 +32,7 @@ export interface UserStats {
     vehicleCount: number;
     entryCount: number;
     totalSpending: number;
+    totalLiters: number;
 }
 
 export interface ActivityLog {

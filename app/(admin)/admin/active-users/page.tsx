@@ -72,7 +72,7 @@ export default function AdminActiveUsersPage() {
     if (loading) {
         return (
             <div className="page">
-                <PageHeader title="Active Users" />
+                <PageHeader title="Pengguna Aktif" />
                 <div className="page-content" style={{ display: 'flex', justifyContent: 'center', paddingTop: 'var(--space-8)' }}>
                     <div className="spinner" style={{ width: '32px', height: '32px' }} />
                 </div>
@@ -84,16 +84,16 @@ export default function AdminActiveUsersPage() {
         const now = new Date();
         const diffHours = (now.getTime() - lastActive.getTime()) / (1000 * 60 * 60);
 
-        if (diffHours < 1) return { text: 'Active now', color: 'var(--success)' };
-        if (diffHours < 24) return { text: 'Active today', color: 'var(--primary)' };
-        if (diffHours < 168) return { text: 'This week', color: 'var(--secondary)' };
-        return { text: 'This month', color: 'var(--text-muted)' };
+        if (diffHours < 1) return { text: 'Aktif sekarang', color: 'var(--success)' };
+        if (diffHours < 24) return { text: 'Aktif hari ini', color: 'var(--primary)' };
+        if (diffHours < 168) return { text: 'Minggu ini', color: 'var(--secondary)' };
+        return { text: 'Bulan ini', color: 'var(--text-muted)' };
     }
 
     return (
         <div className="page">
             <PageHeader
-                title={`Active Users (${activeUsers.length})`}
+                title={`Pengguna Aktif (${activeUsers.length})`}
                 leftContent={
                     <button
                         className="btn btn-ghost btn-icon"
@@ -107,15 +107,15 @@ export default function AdminActiveUsersPage() {
             <div className="page-content">
                 <div className="card" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-3)', background: 'var(--surface-elevated)' }}>
                     <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                        Showing users who were active in the last 30 days
+                        Menampilkan pengguna yang aktif dalam 30 hari terakhir
                     </div>
                 </div>
 
                 {activeUsers.length === 0 ? (
                     <div className="empty-state">
                         <Activity className="empty-state-icon" />
-                        <h3 className="empty-state-title">No Active Users</h3>
-                        <p className="empty-state-description">No users have been active in the last 30 days</p>
+                        <h3 className="empty-state-title">Tidak Ada Pengguna Aktif</h3>
+                        <p className="empty-state-description">Tidak ada pengguna yang aktif dalam 30 hari terakhir</p>
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>

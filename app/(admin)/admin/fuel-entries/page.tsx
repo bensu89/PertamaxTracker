@@ -27,6 +27,7 @@ export default function AdminFuelEntriesPage() {
     const [loading, setLoading] = useState(true);
     const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
     const [deletingEntry, setDeletingEntry] = useState<string | null>(null);
+    const [vehiclesMap, setVehiclesMap] = useState<Map<string, string>>(new Map());
 
     useEffect(() => {
         if (!user || !isAdmin) {
@@ -42,6 +43,8 @@ export default function AdminFuelEntriesPage() {
                 const entriesSnap = await getDocs(collection(db, 'fuelEntries'));
                 // Fetch all users
                 const usersSnap = await getDocs(collection(db, 'users'));
+                // Fetch all vehicles
+                const vehiclesSnap = await getDocs(collection(db, 'vehicles'));
 
                 const usersMap = new Map();
                 usersSnap.forEach(doc => {
@@ -51,6 +54,14 @@ export default function AdminFuelEntriesPage() {
                         email: data.email || ''
                     });
                 });
+
+                // Build vehicles map (vehicleId -> vehicleName)
+                const vMap = new Map<string, string>();
+                vehiclesSnap.forEach(doc => {
+                    const data = doc.data();
+                    vMap.set(doc.id, data.name || data.plateNumber || 'Unknown');
+                });
+                setVehiclesMap(vMap);
 
                 // Aggregate by user
                 const userDataMap = new Map<string, UserFuelData>();
@@ -120,10 +131,28 @@ export default function AdminFuelEntriesPage() {
                         });
                     });
 
-                    // Sort by date descending
+                    // Sort by date descending (newest first)
                     entries.sort((a, b) => {
-                        const dateA = a.date instanceof Date ? a.date : new Date(a.date);
-                        const dateB = b.date instanceof Date ? b.date : new Date(b.date);
+                        let dateA: Date;
+                        let dateB: Date;
+
+                        // Handle Firebase Timestamp
+                        if (typeof (a.date as any)?.toDate === 'function') {
+                            dateA = (a.date as any).toDate();
+                        } else if (a.date instanceof Date) {
+                            dateA = a.date;
+                        } else {
+                            dateA = new Date(a.date);
+                        }
+
+                        if (typeof (b.date as any)?.toDate === 'function') {
+                            dateB = (b.date as any).toDate();
+                        } else if (b.date instanceof Date) {
+                            dateB = b.date;
+                        } else {
+                            dateB = new Date(b.date);
+                        }
+
                         return dateB.getTime() - dateA.getTime();
                     });
 
@@ -381,6 +410,10 @@ export default function AdminFuelEntriesPage() {
                                                             <div>
                                                                 <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>BBM</div>
                                                                 <div style={{ fontWeight: 500, textTransform: 'capitalize' }}>{entry.fuelType}</div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Kendaraan</div>
+                                                                <div style={{ fontWeight: 500 }}>{vehiclesMap.get(entry.vehicleId) || '-'}</div>
                                                             </div>
                                                         </div>
                                                         <button
