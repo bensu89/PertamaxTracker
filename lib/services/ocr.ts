@@ -1,7 +1,21 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
+// Initialize Groq AI lazily
+let groq: Groq | null = null;
+
+function getGroqClient() {
+    if (!groq) {
+        const apiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY;
+        if (!apiKey) {
+            throw new Error('Groq API Key is missing. Please check .env.local');
+        }
+        groq = new Groq({
+            apiKey: apiKey,
+            dangerouslyAllowBrowser: true
+        });
+    }
+    return groq;
+}
 
 export interface ReceiptData {
     date?: Date;
@@ -13,40 +27,57 @@ export interface ReceiptData {
 }
 
 /**
- * Extracts data from a fuel receipt image using Gemini AI (Flash model)
+ * Extracts data from a fuel receipt image using Groq AI (Llama 3.2 Vision)
  */
 export async function extractReceiptData(imageFile: File): Promise<ReceiptData> {
-    if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
-        throw new Error('Gemini API Key is missing');
+    if (!process.env.NEXT_PUBLIC_GROQ_API_KEY) {
+        throw new Error('Groq API Key is missing');
     }
 
     try {
-        // Convert file to base64
-        const base64Data = await fileToGenerativePart(imageFile);
+        // Convert file to base64 data URL
+        const base64DataUrl = await fileToBase64(imageFile);
 
-        // Use Gemini 2.0 Flash as it is available for this API key
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const completion = await getGroqClient().chat.completions.create({
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'text',
+                            text: `
+                            Analyze this fuel receipt image and extract the following information in strict JSON format:
+                            - stationName: The name of the gas station (SPBU)
+                            - date: The date of transaction (YYYY-MM-DD format)
+                            - fuelType: The type of fuel (e.g., Pertamax, Pertalite, Solar, Dexlite)
+                            - liters: The volume of fuel in liters (number)
+                            - pricePerLiter: The price per liter (number)
+                            - totalPrice: The total price paid (number)
 
-        const prompt = `
-        Analyze this fuel receipt image and extract the following information in JSON format:
-        - stationName: The name of the gas station (SPBU)
-        - date: The date of transaction (YYYY-MM-DD format)
-        - fuelType: The type of fuel (e.g., Pertamax, Pertalite, Solar, Dexlite)
-        - liters: The volume of fuel in liters (number)
-        - pricePerLiter: The price per liter (number)
-        - totalPrice: The total price paid (number)
+                            If a field is not visible or clear, set it to null.
+                            Return ONLY the JSON object, do not include markdown formatting or explanation.
+                            `
+                        },
+                        {
+                            type: 'image_url',
+                            image_url: {
+                                url: base64DataUrl
+                            }
+                        }
+                    ]
+                }
+            ],
+            model: 'llama-3.2-11b-vision-preview',
+            temperature: 0,
+            max_tokens: 1024,
+            response_format: { type: 'json_object' }
+        });
 
-        If a field is not visible or clear, set it to null.
-        Return only the JSON object, no markdown formatting.
-        `;
+        const jsonString = completion.choices[0]?.message?.content || '{}';
 
-        const result = await model.generateContent([prompt, base64Data]);
-        const response = await result.response;
-        const text = response.text();
-
-        // Clean up the response to get pure JSON
-        const jsonString = text.replace(/```json|```/g, '').trim();
-        const data = JSON.parse(jsonString);
+        // Sometimes the response might still contain markdown code blocks even with json_object
+        const cleanJson = jsonString.replace(/```json|```/g, '').trim();
+        const data = JSON.parse(cleanJson);
 
         return {
             stationName: data.stationName || undefined,
@@ -57,28 +88,18 @@ export async function extractReceiptData(imageFile: File): Promise<ReceiptData> 
             totalPrice: typeof data.totalPrice === 'number' ? data.totalPrice : parseFloat(data.totalPrice),
         };
     } catch (error) {
-        console.error('Error extracting receipt data:', error);
-        throw new Error('Gagal membaca struk. Pastikan gambar jelas.');
+        console.error('Error extracting receipt data with Groq:', error);
+        throw new Error('Gagal membaca struk dengan Groq. Pastikan gambar jelas.');
     }
 }
 
 /**
- * Helper to convert File to GoogleGenerativeAI Part
+ * Helper to convert File to Base64 Data URL
  */
-async function fileToGenerativePart(file: File): Promise<{ inlineData: { data: string; mimeType: string } }> {
+function fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onloadend = () => {
-            const base64String = reader.result as string;
-            // Remove data URL prefix (e.g., "data:image/jpeg;base64,")
-            const base64Data = base64String.split(',')[1];
-            resolve({
-                inlineData: {
-                    data: base64Data,
-                    mimeType: file.type
-                },
-            });
-        };
+        reader.onload = () => resolve(reader.result as string);
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
