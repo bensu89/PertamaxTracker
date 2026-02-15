@@ -35,8 +35,8 @@ export async function extractReceiptData(imageFile: File): Promise<ReceiptData> 
     }
 
     try {
-        // Convert file to base64 data URL
-        const base64DataUrl = await fileToBase64(imageFile);
+        // Compress image before sending
+        const compressedBase64 = await compressImage(imageFile);
 
         const completion = await getGroqClient().chat.completions.create({
             messages: [
@@ -61,7 +61,7 @@ export async function extractReceiptData(imageFile: File): Promise<ReceiptData> 
                         {
                             type: 'image_url',
                             image_url: {
-                                url: base64DataUrl
+                                url: compressedBase64
                             }
                         }
                     ]
@@ -94,14 +94,47 @@ export async function extractReceiptData(imageFile: File): Promise<ReceiptData> 
 }
 
 /**
- * Helper to convert File to Base64 Data URL
+ * Helper to compress and convert image to Base64
+ * Resizes to max 1024px width/height and reduces quality
  */
-function fileToBase64(file: File): Promise<string> {
+function compressImage(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
         reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const MAX_SIZE = 1024;
+
+                // Calculate new dimensions
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height *= MAX_SIZE / width;
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width *= MAX_SIZE / height;
+                        height = MAX_SIZE;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+
+                // Convert directly to base64 with reduced quality (0.7)
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                resolve(dataUrl);
+            };
+            img.onerror = (err) => reject(new Error('Failed to load image for compression'));
+        };
+        reader.onerror = (err) => reject(new Error('Failed to read file'));
     });
 }
 
