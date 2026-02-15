@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
     Calendar as CalendarIcon,
     Gauge,
@@ -8,11 +8,14 @@ import {
     Wallet,
     CheckSquare,
     Save,
-    Info
+    Info,
+    Camera,
+    Upload
 } from 'lucide-react';
 import type { FuelEntryFormData, FuelType, Vehicle, FuelEntry } from '@/lib/types';
 import { formatRupiah, formatNumber, formatDate } from '@/lib/utils';
 import { calculatePricePerLiter, calculateDistance, calculateEfficiency } from '@/lib/calculations';
+import { extractReceiptData } from '@/lib/services/ocr';
 
 interface FuelFormProps {
     vehicles: Vehicle[];
@@ -56,8 +59,11 @@ export default function FuelForm({
 
     const [pricePerLiter, setPricePerLiter] = useState(0);
     const [lastEdited, setLastEdited] = useState<'total' | 'perLiter'>('total');
-
     const [errors, setErrors] = useState<Partial<Record<keyof FuelEntryFormData, string>>>({});
+
+    // Scan Receipt State
+    const [isScanning, setIsScanning] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Update form when initialData from receipt scanner changes
     useEffect(() => {
@@ -83,6 +89,50 @@ export default function FuelForm({
             }
         }
     }, [initialData]);
+
+    // Handle receipt file selection
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsScanning(true);
+        try {
+            const data = await extractReceiptData(file);
+
+            // Map extracted data to form
+            const updates: Partial<FuelEntryFormData> = {};
+
+            if (data.date) updates.date = data.date;
+            if (data.liters) updates.liters = data.liters;
+            if (data.totalPrice) updates.totalPrice = data.totalPrice;
+            if (data.fuelType) updates.fuelType = data.fuelType as FuelType;
+
+            // Calculate price per liter if available
+            if (data.pricePerLiter) {
+                setPricePerLiter(data.pricePerLiter);
+                setLastEdited('perLiter');
+            } else if (data.totalPrice && data.liters) {
+                setPricePerLiter(Math.round(data.totalPrice / data.liters));
+                setLastEdited('perLiter');
+            }
+
+            // Update notes with station name
+            if (data.stationName) {
+                updates.notes = `SPBU: ${data.stationName}`;
+            }
+
+            setFormData(prev => ({ ...prev, ...updates }));
+
+            alert('Berhasil membaca struk! Silakan periksa data yang terisi.');
+        } catch (error) {
+            console.error('OCR Error:', error);
+            alert('Gagal membaca struk. Pastikan gambar jelas dan pencahayaan cukup.');
+        } finally {
+            setIsScanning(false);
+            // Reset input so same file can be selected again
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
 
     // Handle liters change - recalculate based on which price field was edited last
     const handleLitersChange = (liters: number) => {
@@ -176,180 +226,239 @@ export default function FuelForm({
     };
 
     const formatDateForInput = (date: Date): string => {
-        return date.toISOString().split('T')[0];
+        if (!date) return '';
+        // Handle case where date might be invalid or string
+        try {
+            return new Date(date).toISOString().split('T')[0];
+        } catch {
+            return '';
+        }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {/* Vehicle Select */}
-            <div className="input-group">
-                <label className="input-label">Kendaraan</label>
-                <select
-                    className="select"
-                    value={formData.vehicleId}
-                    onChange={(e) => {
-                        const vehicle = vehicles.find(v => v.id === e.target.value);
-                        setFormData({
-                            ...formData,
-                            vehicleId: e.target.value,
-                            fuelType: vehicle?.defaultFuelType || formData.fuelType
-                        });
-                        onVehicleChange?.(e.target.value);
-                    }}
-                >
-                    {vehicles.map(v => (
-                        <option key={v.id} value={v.id}>
-                            🚗 {v.name} ({v.plateNumber})
-                        </option>
-                    ))}
-                </select>
-                {errors.vehicleId && (
-                    <span style={{ color: 'var(--danger)', fontSize: '12px' }}>{errors.vehicleId}</span>
-                )}
-            </div>
+        <div className="flex flex-col gap-4">
+            {/* Scan Receipt Button */}
+            <div
+                className="card border-dashed p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-50 transition-colors"
+                style={{
+                    border: '2px dashed var(--border)',
+                    background: 'var(--card-bg)',
+                    marginBottom: 'var(--space-2)'
+                }}
+                onClick={() => !isScanning && !isLoading && fileInputRef.current?.click()}
+            >
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFileChange}
+                    disabled={isScanning || isLoading}
+                />
 
-            {/* Date */}
-            <div className="input-group">
-                <label className="input-label">Tanggal</label>
-                <div className="input-icon">
-                    <CalendarIcon size={18} className="icon" />
-                    <input
-                        type="date"
-                        className="input"
-                        value={formatDateForInput(formData.date)}
-                        onChange={(e) => setFormData({ ...formData, date: new Date(e.target.value) })}
-                        max={formatDateForInput(new Date())}
-                    />
-                </div>
-            </div>
-
-            {/* Odometer */}
-            <div className="input-group">
-                <label className="input-label">Odometer (KM) - Opsional</label>
-                <div className="input-icon">
-                    <Gauge size={18} className="icon" />
-                    <input
-                        type="number"
-                        className="input"
-                        placeholder="0"
-                        value={formData.odometer || ''}
-                        onChange={(e) => setFormData({ ...formData, odometer: parseInt(e.target.value) || 0 })}
-                        min={0}
-                    />
-                </div>
-                <span className="input-hint flex items-center gap-1">
-                    <Info size={12} />
-                    Bisa dikosongkan jika odometer di-reset manual
-                </span>
-                {errors.odometer && (
-                    <span style={{ color: 'var(--danger)', fontSize: '12px' }}>{errors.odometer}</span>
-                )}
-            </div>
-
-            {/* Liters & Fuel Type */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-                <div className="input-group">
-                    <label className="input-label">Jumlah Liter</label>
-                    <div className="input-icon">
-                        <Droplets size={18} className="icon" />
-                        <input
-                            type="number"
-                            className="input"
-                            placeholder="15.5"
-                            value={formData.liters || ''}
-                            onChange={(e) => handleLitersChange(parseFloat(e.target.value) || 0)}
-                            min={0}
-                            step="any"
-                            lang="en"
-                        />
+                {isScanning ? (
+                    <div className="flex items-center gap-2 text-primary">
+                        <span className="spinner w-5 h-5"></span>
+                        <span className="font-medium">Menganalisis struk...</span>
                     </div>
-                    {errors.liters && (
-                        <span style={{ color: 'var(--danger)', fontSize: '12px' }}>{errors.liters}</span>
-                    )}
-                </div>
+                ) : (
+                    <>
+                        <div className="p-3 bg-primary-light rounded-full text-primary">
+                            <Camera size={24} />
+                        </div>
+                        <div className="text-center">
+                            <p className="font-medium">Scan Struk BBM</p>
+                            <p className="text-sm text-muted">Otomatis isi form dari foto struk</p>
+                        </div>
+                    </>
+                )}
+            </div>
 
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                {/* Vehicle Select */}
                 <div className="input-group">
-                    <label className="input-label">Jenis BBM</label>
+                    <label className="input-label">Kendaraan</label>
                     <select
                         className="select"
-                        value={formData.fuelType}
-                        onChange={(e) => setFormData({ ...formData, fuelType: e.target.value as FuelType })}
+                        value={formData.vehicleId}
+                        onChange={(e) => {
+                            const vehicle = vehicles.find(v => v.id === e.target.value);
+                            setFormData({
+                                ...formData,
+                                vehicleId: e.target.value,
+                                fuelType: vehicle?.defaultFuelType || formData.fuelType
+                            });
+                            onVehicleChange?.(e.target.value);
+                        }}
                     >
-                        {fuelTypes.map(type => (
-                            <option key={type.value} value={type.value}>
-                                {type.label}
+                        {vehicles.map(v => (
+                            <option key={v.id} value={v.id}>
+                                🚗 {v.name} ({v.plateNumber})
                             </option>
                         ))}
                     </select>
-                </div>
-            </div>
-
-            {/* Price Per Liter & Total Price */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-                <div className="input-group">
-                    <label className="input-label">Harga/Liter (Rp)</label>
-                    <div className="input-icon">
-                        <Wallet size={18} className="icon" />
-                        <input
-                            type="number"
-                            className="input"
-                            placeholder="15000"
-                            value={pricePerLiter || ''}
-                            onChange={(e) => handlePricePerLiterChange(parseInt(e.target.value) || 0)}
-                            min={0}
-                        />
-                    </div>
-                    <span className="input-hint">Otomatis hitung liter atau total</span>
-                </div>
-
-                <div className="input-group">
-                    <label className="input-label">Total Harga (Rp)</label>
-                    <div className="input-icon">
-                        <Wallet size={18} className="icon" />
-                        <input
-                            type="number"
-                            className="input"
-                            placeholder="203050"
-                            value={formData.totalPrice || ''}
-                            onChange={(e) => handleTotalPriceChange(parseInt(e.target.value) || 0)}
-                            min={0}
-                        />
-                    </div>
-                    {errors.totalPrice && (
-                        <span style={{ color: 'var(--danger)', fontSize: '12px' }}>{errors.totalPrice}</span>
+                    {errors.vehicleId && (
+                        <span style={{ color: 'var(--danger)', fontSize: '12px' }}>{errors.vehicleId}</span>
                     )}
                 </div>
-            </div>
 
-            {/* Actions */}
-            <div className="flex gap-3" style={{ marginTop: 'var(--space-4)' }}>
-                {onCancel && (
+                {/* Date */}
+                <div className="input-group">
+                    <label className="input-label">Tanggal</label>
+                    <div className="input-icon">
+                        <CalendarIcon size={18} className="icon" />
+                        <input
+                            type="date"
+                            className="input"
+                            value={formatDateForInput(formData.date)}
+                            onChange={(e) => setFormData({ ...formData, date: new Date(e.target.value) })}
+                            max={formatDateForInput(new Date())}
+                        />
+                    </div>
+                </div>
+
+                {/* Odometer */}
+                <div className="input-group">
+                    <label className="input-label">Odometer (KM) - Opsional</label>
+                    <div className="input-icon">
+                        <Gauge size={18} className="icon" />
+                        <input
+                            type="number"
+                            className="input"
+                            placeholder="0"
+                            value={formData.odometer || ''}
+                            onChange={(e) => setFormData({ ...formData, odometer: parseInt(e.target.value) || 0 })}
+                            min={0}
+                        />
+                    </div>
+                    <span className="input-hint flex items-center gap-1">
+                        <Info size={12} />
+                        Bisa dikosongkan jika odometer di-reset manual
+                    </span>
+                    {errors.odometer && (
+                        <span style={{ color: 'var(--danger)', fontSize: '12px' }}>{errors.odometer}</span>
+                    )}
+                </div>
+
+                {/* Liters & Fuel Type */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                    <div className="input-group">
+                        <label className="input-label">Jumlah Liter</label>
+                        <div className="input-icon">
+                            <Droplets size={18} className="icon" />
+                            <input
+                                type="number"
+                                className="input"
+                                placeholder="15.5"
+                                value={formData.liters || ''}
+                                onChange={(e) => handleLitersChange(parseFloat(e.target.value) || 0)}
+                                min={0}
+                                step="any"
+                                lang="en"
+                            />
+                        </div>
+                        {errors.liters && (
+                            <span style={{ color: 'var(--danger)', fontSize: '12px' }}>{errors.liters}</span>
+                        )}
+                    </div>
+
+                    <div className="input-group">
+                        <label className="input-label">Jenis BBM</label>
+                        <select
+                            className="select"
+                            value={formData.fuelType}
+                            onChange={(e) => setFormData({ ...formData, fuelType: e.target.value as FuelType })}
+                        >
+                            {fuelTypes.map(type => (
+                                <option key={type.value} value={type.value}>
+                                    {type.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                {/* Price Per Liter & Total Price */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                    <div className="input-group">
+                        <label className="input-label">Harga/Liter (Rp)</label>
+                        <div className="input-icon">
+                            <Wallet size={18} className="icon" />
+                            <input
+                                type="number"
+                                className="input"
+                                placeholder="15000"
+                                value={pricePerLiter || ''}
+                                onChange={(e) => handlePricePerLiterChange(parseInt(e.target.value) || 0)}
+                                min={0}
+                            />
+                        </div>
+                        <span className="input-hint">Otomatis hitung liter atau total</span>
+                    </div>
+
+                    <div className="input-group">
+                        <label className="input-label">Total Harga (Rp)</label>
+                        <div className="input-icon">
+                            <Wallet size={18} className="icon" />
+                            <input
+                                type="number"
+                                className="input"
+                                placeholder="203050"
+                                value={formData.totalPrice || ''}
+                                onChange={(e) => handleTotalPriceChange(parseInt(e.target.value) || 0)}
+                                min={0}
+                            />
+                        </div>
+                        {errors.totalPrice && (
+                            <span style={{ color: 'var(--danger)', fontSize: '12px' }}>{errors.totalPrice}</span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Notes (Added for OCR station name) */}
+                <div className="input-group">
+                    <label className="input-label">Catatan</label>
+                    <textarea
+                        className="input"
+                        placeholder="Contoh: SPBU ... (Opsional)"
+                        value={formData.notes || ''}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        rows={2}
+                        style={{ resize: 'none' }}
+                    />
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3" style={{ marginTop: 'var(--space-4)' }}>
+                    {onCancel && (
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            style={{ flex: 1 }}
+                            onClick={onCancel}
+                            disabled={isLoading}
+                        >
+                            Batal
+                        </button>
+                    )}
                     <button
-                        type="button"
-                        className="btn btn-secondary"
-                        style={{ flex: 1 }}
-                        onClick={onCancel}
+                        type="submit"
+                        className="btn btn-primary btn-lg"
+                        style={{ flex: 2 }}
                         disabled={isLoading}
                     >
-                        Batal
+                        {isLoading ? (
+                            <span className="spinner" />
+                        ) : (
+                            <>
+                                <Save size={18} />
+                                Simpan Pengisian
+                            </>
+                        )}
                     </button>
-                )}
-                <button
-                    type="submit"
-                    className="btn btn-primary btn-lg"
-                    style={{ flex: 2 }}
-                    disabled={isLoading}
-                >
-                    {isLoading ? (
-                        <span className="spinner" />
-                    ) : (
-                        <>
-                            <Save size={18} />
-                            Simpan Pengisian
-                        </>
-                    )}
-                </button>
-            </div>
-        </form>
+                </div>
+            </form>
+        </div>
     );
 }
