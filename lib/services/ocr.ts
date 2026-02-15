@@ -24,8 +24,8 @@ export async function extractReceiptData(imageFile: File): Promise<ReceiptData> 
         // Convert file to base64
         const base64Data = await fileToGenerativePart(imageFile);
 
-        // Use Gemini 1.5 Flash for speed and cost efficiency
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        // Use Gemini 2.0 Flash as it is available for this API key
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
         const prompt = `
         Analyze this fuel receipt image and extract the following information in JSON format:
