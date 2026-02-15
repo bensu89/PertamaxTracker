@@ -201,8 +201,7 @@ export default function FuelForm({
     return (
         <div className="flex flex-col gap-4">
             {/* Scan Receipt Button */}
-            <div
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 {/* Vehicle Select */}
                 <div className="input-group">
                     <label className="input-label">Kendaraan</label>
