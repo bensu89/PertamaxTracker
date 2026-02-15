@@ -8,14 +8,12 @@ import {
     Wallet,
     CheckSquare,
     Save,
-    Info,
-    Camera,
-    Upload
+    Info
 } from 'lucide-react';
 import type { FuelEntryFormData, FuelType, Vehicle, FuelEntry } from '@/lib/types';
 import { formatRupiah, formatNumber, formatDate } from '@/lib/utils';
 import { calculatePricePerLiter, calculateDistance, calculateEfficiency } from '@/lib/calculations';
-import { extractReceiptData } from '@/lib/services/ocr';
+
 
 interface FuelFormProps {
     vehicles: Vehicle[];
@@ -61,9 +59,6 @@ export default function FuelForm({
     const [lastEdited, setLastEdited] = useState<'total' | 'perLiter'>('total');
     const [errors, setErrors] = useState<Partial<Record<keyof FuelEntryFormData, string>>>({});
 
-    // Scan Receipt State
-    const [isScanning, setIsScanning] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Update form when initialData from receipt scanner changes
     useEffect(() => {
@@ -90,50 +85,17 @@ export default function FuelForm({
         }
     }, [initialData]);
 
-    // Handle receipt file selection
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    // Vehicle handling
+    const selectedVehicle = vehicles.find(v => v.id === formData.vehicleId);
 
-        setIsScanning(true);
-        try {
-            const data = await extractReceiptData(file);
-
-            // Map extracted data to form
-            const updates: Partial<FuelEntryFormData> = {};
-
-            if (data.date) updates.date = data.date;
-            if (data.liters) updates.liters = data.liters;
-            if (data.totalPrice) updates.totalPrice = data.totalPrice;
-            if (data.fuelType) updates.fuelType = data.fuelType as FuelType;
-
-            // Calculate price per liter if available
-            if (data.pricePerLiter) {
-                setPricePerLiter(data.pricePerLiter);
-                setLastEdited('perLiter');
-            } else if (data.totalPrice && data.liters) {
-                setPricePerLiter(Math.round(data.totalPrice / data.liters));
-                setLastEdited('perLiter');
-            }
-
-            // Update notes with station name
-            if (data.stationName) {
-                updates.notes = `SPBU: ${data.stationName}`;
-            }
-
-            setFormData(prev => ({ ...prev, ...updates }));
-
-            alert('Berhasil membaca struk! Silakan periksa data yang terisi.');
-        } catch (error) {
-            console.error('OCR Error:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            alert(`Gagal membaca struk: ${errorMessage}. Coba foto lebih dekat atau resolusi lebih kecil.`);
-        } finally {
-            setIsScanning(false);
-            // Reset input so same file can be selected again
-            if (fileInputRef.current) fileInputRef.current.value = '';
+    useEffect(() => {
+        if (selectedVehicle?.defaultFuelType) {
+            setFormData(prev => ({
+                ...prev,
+                fuelType: selectedVehicle.defaultFuelType
+            }));
         }
-    };
+    }, [selectedVehicle]);
 
     // Handle liters change - recalculate based on which price field was edited last
     const handleLitersChange = (liters: number) => {
@@ -240,43 +202,7 @@ export default function FuelForm({
         <div className="flex flex-col gap-4">
             {/* Scan Receipt Button */}
             <div
-                className="card border-dashed p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-50 transition-colors"
-                style={{
-                    border: '2px dashed var(--border)',
-                    background: 'var(--card-bg)',
-                    marginBottom: 'var(--space-2)'
-                }}
-                onClick={() => !isScanning && !isLoading && fileInputRef.current?.click()}
-            >
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handleFileChange}
-                    disabled={isScanning || isLoading}
-                />
-
-                {isScanning ? (
-                    <div className="flex items-center gap-2 text-primary">
-                        <span className="spinner w-5 h-5"></span>
-                        <span className="font-medium">Menganalisis struk...</span>
-                    </div>
-                ) : (
-                    <>
-                        <div className="p-3 bg-primary-light rounded-full text-primary">
-                            <Camera size={24} />
-                        </div>
-                        <div className="text-center">
-                            <p className="font-medium">Scan Struk BBM</p>
-                            <p className="text-sm text-muted">Otomatis isi form dari foto struk</p>
-                        </div>
-                    </>
-                )}
-            </div>
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 {/* Vehicle Select */}
                 <div className="input-group">
                     <label className="input-label">Kendaraan</label>
