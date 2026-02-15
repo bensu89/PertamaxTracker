@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pertamax Tracker ⛽
 
-## Getting Started
+Web App sederhana untuk mencatat dan memantau penggunaan BBM kendaraan, khusus dirancang untuk pengguna Pertamax/BBM lainnya di Indonesia. Aplikasi ini dibuat dengan **Next.js 16** dan **Firebase**, dengan tampilan modern yang responsif.
 
-First, run the development server:
+![Pertamax Tracker Dashboard](public/screenshot-dashboard.png) *Ganti dengan screenshot asli jika ada*
 
+## ✨ Fitur Utama
+
+-   **Multi-Kendaraan**: Kelola pencatatan untuk lebih dari satu kendaraan (Mobil/Motor).
+-   **Dashboard Statistik**: Lihat pengeluaran bulanan, efisiensi rata-rata (KM/L), dan estimasi jarak tempuh.
+-   **Scan Struk Otomatis (OCR Offline)**:
+    -   Scan foto struk SPBU langsung dari HP.
+    -   Menggunakan **AI Lokal (Tesseract.js)** di browser, tanpa perlu upload ke server (Privasi aman & Hemat kuota).
+    -   Otomatis mendeteksi Tanggal, Liter, Harga/Liter, dan Total Harga.
+-   **Riwayat Pengisian**: Log lengkap riwayat pengisian BBM.
+-   **Grafik Tren**: Visualisasi tren harga BBM.
+-   **PWA Ready**: Bisa diinstall di HP sebagai Web App (Progressive Web App).
+
+## 🛠️ Teknologi
+
+-   **Framework**: [Next.js 16 (App Router)](https://nextjs.org/)
+-   **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
+-   **Database & Auth**: [Firebase (Firestore & Authentication)](https://firebase.google.com/)
+-   **OCR Engine**: [Tesseract.js](https://tesseract.projectnaptha.com/) (Wasm-based)
+-   **Icons**: [Lucide React](https://lucide.dev/)
+-   **Charts**: [Recharts](https://recharts.org/)
+
+## 🚀 Cara Menjalankan (Local Development)
+
+Ikuti langkah ini untuk menjalankan project di komputer Anda:
+
+### 1. Prasyarat
+-   Node.js (versi 18 atau terbaru)
+-   Akun Firebase
+
+### 2. Clone Repository
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/bensu89/PertamaxTracker.git
+cd pertamax-tracker
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Install Dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Konfigurasi Firebase
+1.  Buat project baru di [Firebase Console](https://console.firebase.google.com/).
+2.  Aktifkan **Authentication** (Email/Password & Google).
+3.  Aktifkan **Firestore Database**.
+4.  Buat file `.env.local` di root project Anda, dan isi dengan config Firebase Anda:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+```
 
-## Learn More
+### 5. Jalankan Aplikasi
+```bash
+npm run dev
+```
+Buka [http://localhost:3000](http://localhost:3000) di browser Anda.
 
-To learn more about Next.js, take a look at the following resources:
+## 📱 Fitur OCR (Scan Struk)
+Fitur OCR berjalan sepenuhnya di sisi klien (browser).
+-   **Model Bahasa**: Menggunakan model Bahasa Indonesia (`ind.traineddata.gz`).
+-   Cara kerja:
+    1.  Ambil foto struk lewat kamera HP.
+    2.  `Tesseract.js` memproses gambar menjadi teks.
+    3.  Regex parser (`lib/utils/receiptParser.ts`) mengekstrak data penting.
+    4.  Form otomatis terisi.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📂 Struktur Project
+-   `app/`: Pages & Layouts (Next.js App Router)
+-   `components/`: UI Components reusable
+-   `lib/`:
+    -   `services/`: Firebase logic (Auth, Firestore)
+    -   `utils/`: Helper functions, Formatters, & Parsers
+    -   `hooks/`: Custom React Hooks
+-   `public/`: Static assets
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🤝 Kontribusi
+Silakan *fork* repository ini dan buat *Pull Request* jika Anda ingin berkontribusi atau memperbaiki bug.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📄 Lisensi
+MIT License
