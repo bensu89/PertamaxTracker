@@ -2,8 +2,6 @@
 
 Web App sederhana untuk mencatat dan memantau penggunaan BBM kendaraan, khusus dirancang untuk pengguna Pertamax/BBM lainnya di Indonesia. Aplikasi ini dibuat dengan **Next.js 16** dan **Firebase**, dengan tampilan modern yang responsif.
 
-![Pertamax Tracker Dashboard](public/screenshot-dashboard.png) *Ganti dengan screenshot asli jika ada*
-
 ## ✨ Fitur Utama
 
 -   **Multi-Kendaraan**: Kelola pencatatan untuk lebih dari satu kendaraan (Mobil/Motor).
