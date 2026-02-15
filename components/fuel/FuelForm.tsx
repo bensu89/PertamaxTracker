@@ -1,25 +1,26 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
-    Calendar as CalendarIcon,
+    Calendar, // Renamed from CalendarIcon
     Gauge,
     Droplets,
-    Wallet,
-    CheckSquare,
+    Banknote, // Renamed from Wallet
     Save,
-    Info
+    Info,
+    Camera, // New import
+    Loader2 // New import
 } from 'lucide-react';
 import type { FuelEntryFormData, FuelType, Vehicle, FuelEntry } from '@/lib/types';
 import { formatRupiah, formatNumber, formatDate } from '@/lib/utils';
-import { calculatePricePerLiter, calculateDistance, calculateEfficiency } from '@/lib/calculations';
+import { extractReceiptData } from '@/lib/services/ocr'; // New import
 
 
 interface FuelFormProps {
     vehicles: Vehicle[];
-    previousEntry?: FuelEntry;
-    initialData?: Partial<FuelEntryFormData>;
-    onSubmit: (data: FuelEntryFormData) => void;
+    previousEntry?: FuelEntry; // This was in the original, but not in the instruction's interface. Keeping it for now.
+    initialData?: Partial<FuelEntryFormData>; // Changed from FuelEntry to Partial<FuelEntryFormData> in instruction, but original was Partial<FuelEntryFormData>. Keeping original.
+    onSubmit: (data: FuelEntryFormData) => Promise<void>; // Changed return type to Promise<void>
     onCancel?: () => void;
     onVehicleChange?: (vehicleId: string) => void;
     isLoading?: boolean;
@@ -35,27 +36,46 @@ const fuelTypes: { value: FuelType; label: string }[] = [
 
 export default function FuelForm({
     vehicles,
-    previousEntry,
+    previousEntry, // Kept from original
     initialData,
     onSubmit,
     onCancel,
     onVehicleChange,
     isLoading = false
 }: FuelFormProps) {
-    const activeVehicle = vehicles.find(v => v.isActive) || vehicles[0];
+    // Current date for default value (YYYY-MM-DD)
+    const today = new Date().toISOString().split('T')[0]; // New variable
 
-    const [formData, setFormData] = useState<FuelEntryFormData>({
-        vehicleId: activeVehicle?.id || '',
-        date: new Date(),
-        odometer: 0,
-        liters: 0,
-        totalPrice: 0,
-        fuelType: activeVehicle?.defaultFuelType || 'pertamax',
-        isFullTank: true,
-        notes: '',
-    });
+    const activeVehicle = vehicles.find(v => v.isActive) || vehicles[0]; // Kept from original
 
-    const [pricePerLiter, setPricePerLiter] = useState(0);
+    const [formData, setFormData] = useState<FuelEntryFormData>(
+        initialData ? {
+            vehicleId: initialData.vehicleId || activeVehicle?.id || '', // Added activeVehicle fallback
+            date: initialData.date || new Date(), // Added new Date() fallback
+            odometer: initialData.odometer || 0, // Added 0 fallback
+            liters: initialData.liters || 0, // Added 0 fallback
+            totalPrice: initialData.totalPrice || 0, // Added 0 fallback
+            pricePerLiter: initialData.pricePerLiter || 0, // New field, added 0 fallback
+            fuelType: initialData.fuelType || activeVehicle?.defaultFuelType || 'pertamax', // Added activeVehicle and 'pertamax' fallback
+            isFullTank: initialData.isFullTank ?? true, // Added true fallback
+            notes: initialData.notes || ''
+        } : {
+            vehicleId: activeVehicle?.id || '',
+            date: new Date(),
+            odometer: 0,
+            liters: 0,
+            totalPrice: 0,
+            pricePerLiter: 0, // New field
+            fuelType: activeVehicle?.defaultFuelType || 'pertamax',
+            isFullTank: true,
+            notes: ''
+        }
+    );
+
+    // Scan Receipt State
+    const [isScanning, setIsScanning] = useState(false); // New state
+    const fileInputRef = useRef<HTMLInputElement>(null); // New ref
+
     const [lastEdited, setLastEdited] = useState<'total' | 'perLiter'>('total');
     const [errors, setErrors] = useState<Partial<Record<keyof FuelEntryFormData, string>>>({});
 
@@ -80,10 +100,59 @@ export default function FuelForm({
             }));
             // Also update pricePerLiter display if totalPrice and liters are provided
             if (initialData.totalPrice && litersValue && litersValue > 0) {
-                setPricePerLiter(Math.round(initialData.totalPrice / litersValue));
+                setFormData(prev => ({ ...prev, pricePerLiter: Math.round(initialData.totalPrice! / litersValue) })); // Updated to set pricePerLiter in formData
             }
         }
     }, [initialData]);
+
+    // Handle receipt file selection
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsScanning(true);
+        try {
+            const data = await extractReceiptData(file);
+
+            // Map extracted data to form
+            const updates: Partial<FuelEntryFormData> = {};
+
+            if (data.date) updates.date = new Date(data.date); // Convert date string to Date object
+            if (data.volume) updates.liters = data.volume;
+            if (data.totalPrice) updates.totalPrice = data.totalPrice;
+            if (data.fuelType) {
+                // Normalize fuel type string to match our FuelType
+                const ft = data.fuelType.toLowerCase();
+                if (ft.includes('turbo')) updates.fuelType = 'pertamax-turbo';
+                else if (ft.includes('pertamax')) updates.fuelType = 'pertamax';
+                else if (ft.includes('pertalite')) updates.fuelType = 'pertalite';
+                else if (ft.includes('dex')) updates.fuelType = 'dexlite';
+                else if (ft.includes('solar')) updates.fuelType = 'solar';
+            };
+
+            // Calculate price per liter if available
+            if (data.pricePerLiter) {
+                updates.pricePerLiter = data.pricePerLiter;
+            }
+
+            // Update notes with station name
+            if (data.spbu) {
+                updates.notes = `SPBU: ${data.spbu}`;
+            }
+
+            setFormData(prev => ({ ...prev, ...updates }));
+
+            alert('Berhasil membaca struk! Silakan periksa data yang terisi.');
+        } catch (error) {
+            console.error('OCR Error:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            alert(`Gagal membaca struk: ${errorMessage}. Coba foto lebih dekat atau resolusi lebih kecil.`);
+        } finally {
+            setIsScanning(false);
+            // Reset input so same file can be selected again
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
 
     // Vehicle handling
     const selectedVehicle = vehicles.find(v => v.id === formData.vehicleId);
@@ -99,27 +168,34 @@ export default function FuelForm({
 
     // Handle liters change - recalculate based on which price field was edited last
     const handleLitersChange = (liters: number) => {
-        if (lastEdited === 'perLiter' && pricePerLiter > 0) {
-            // Calculate total from price per liter
-            const total = Math.round(liters * pricePerLiter);
-            setFormData({ ...formData, liters, totalPrice: total });
-        } else if (lastEdited === 'total' && formData.totalPrice > 0) {
-            // Keep total, recalculate price per liter display
-            setFormData({ ...formData, liters });
-        } else {
-            setFormData({ ...formData, liters });
-        }
+        setFormData(prev => {
+            if (lastEdited === 'perLiter' && (prev.pricePerLiter || 0) > 0) {
+                // Calculate total from price per liter
+                const total = Math.round(liters * (prev.pricePerLiter || 0));
+                return { ...prev, liters, totalPrice: total };
+            } else if (lastEdited === 'total' && prev.totalPrice > 0) {
+                // Keep total, recalculate price per liter display
+                let newPricePerLiter = prev.pricePerLiter;
+                if (liters > 0) {
+                    newPricePerLiter = Math.round(prev.totalPrice / liters);
+                }
+                return { ...prev, liters, pricePerLiter: newPricePerLiter };
+            } else {
+                return { ...prev, liters };
+            }
+        });
     };
 
     // Handle price per liter change - ALWAYS calculate liters if totalPrice exists
     const handlePricePerLiterChange = (ppl: number) => {
-        setPricePerLiter(ppl);
         setLastEdited('perLiter');
 
         if (formData.totalPrice > 0 && ppl > 0) {
             // Always calculate liters from total price and price per liter
             const liters = parseFloat((formData.totalPrice / ppl).toFixed(2));
-            setFormData({ ...formData, liters });
+            setFormData(prev => ({ ...prev, pricePerLiter: ppl, liters }));
+        } else {
+            setFormData(prev => ({ ...prev, pricePerLiter: ppl }));
         }
     };
 
@@ -127,31 +203,30 @@ export default function FuelForm({
     const handleTotalPriceChange = (total: number) => {
         setLastEdited('total');
 
-        if (pricePerLiter > 0 && total > 0) {
+        if ((formData.pricePerLiter || 0) > 0 && total > 0) {
             // Always calculate liters from total price and price per liter
-            const liters = parseFloat((total / pricePerLiter).toFixed(2));
-            setFormData({ ...formData, totalPrice: total, liters });
+            const liters = parseFloat((total / (formData.pricePerLiter || 1)).toFixed(2));
+            setFormData(prev => ({ ...prev, totalPrice: total, liters }));
         } else {
-            setFormData({ ...formData, totalPrice: total });
+            setFormData(prev => ({ ...prev, totalPrice: total }));
         }
     };
 
     // Calculated values for display
-    const calculations = useMemo(() => {
-        const calculatedPricePerLiter = formData.liters > 0
-            ? calculatePricePerLiter(formData.totalPrice, formData.liters)
-            : pricePerLiter;
+    const calculations = {
+        pricePerLiter: formData.pricePerLiter || (formData.liters > 0 && formData.totalPrice > 0
+            ? Math.round(formData.totalPrice / formData.liters)
+            : 0),
+        distance: previousEntry && formData.odometer > 0
+            ? (formData.odometer - previousEntry.odometer > 0 ? formData.odometer - previousEntry.odometer : 0)
+            : 0,
+        efficiency: 0
+    };
 
-        const distance = previousEntry && formData.odometer > 0
-            ? calculateDistance(formData.odometer, previousEntry.odometer)
-            : 0;
-
-        const efficiency = formData.isFullTank && distance > 0 && formData.liters > 0
-            ? calculateEfficiency(formData.odometer, previousEntry?.odometer || 0, formData.liters)
-            : 0;
-
-        return { pricePerLiter: calculatedPricePerLiter, distance, efficiency };
-    }, [formData.totalPrice, formData.liters, formData.odometer, formData.isFullTank, previousEntry, pricePerLiter]);
+    // Calculate efficiency separately to avoid complexity in object literal
+    if (formData.isFullTank && calculations.distance > 0 && formData.liters > 0) {
+        calculations.efficiency = parseFloat((calculations.distance / formData.liters).toFixed(2));
+    }
 
     const validate = (): boolean => {
         const newErrors: typeof errors = {};
@@ -177,13 +252,13 @@ export default function FuelForm({
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (validate()) {
             // Include pricePerLiter in the submitted data
-            onSubmit({
+            await onSubmit({
                 ...formData,
-                pricePerLiter: pricePerLiter > 0 ? pricePerLiter : undefined
+                pricePerLiter: (formData.pricePerLiter || 0) > 0 ? formData.pricePerLiter : undefined
             });
         }
     };
@@ -201,6 +276,44 @@ export default function FuelForm({
     return (
         <div className="flex flex-col gap-4">
             {/* Scan Receipt Button */}
+            <div
+                className="card border-dashed p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-amber-50 transition-colors"
+                style={{
+                    border: '2px dashed #d97706',
+                    background: '#fffbeb',
+                    marginBottom: '1rem',
+                    borderRadius: '0.75rem'
+                }}
+                onClick={() => !isScanning && !isLoading && fileInputRef.current?.click()}
+            >
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFileChange}
+                    disabled={isScanning || isLoading}
+                />
+
+                {isScanning ? (
+                    <div className="flex items-center gap-2 text-amber-600">
+                        <Loader2 className="animate-spin w-5 h-5" />
+                        <span className="font-medium">Menganalisis struk... (Offline)</span>
+                    </div>
+                ) : (
+                    <>
+                        <div className="p-3 bg-amber-100 rounded-full text-amber-600">
+                            <Camera size={24} />
+                        </div>
+                        <div className="text-center">
+                            <p className="font-medium text-amber-900">Scan Struk BBM</p>
+                            <p className="text-sm text-amber-700">Otomatis isi form dari foto struk (Offline)</p>
+                        </div>
+                    </>
+                )}
+            </div>
+
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 {/* Vehicle Select */}
                 <div className="input-group">
@@ -233,7 +346,7 @@ export default function FuelForm({
                 <div className="input-group">
                     <label className="input-label">Tanggal</label>
                     <div className="input-icon">
-                        <CalendarIcon size={18} className="icon" />
+                        <Calendar size={18} className="icon" />
                         <input
                             type="date"
                             className="input"
@@ -310,12 +423,12 @@ export default function FuelForm({
                     <div className="input-group">
                         <label className="input-label">Harga/Liter (Rp)</label>
                         <div className="input-icon">
-                            <Wallet size={18} className="icon" />
+                            <Banknote size={18} className="icon" />
                             <input
                                 type="number"
                                 className="input"
                                 placeholder="15000"
-                                value={pricePerLiter || ''}
+                                value={formData.pricePerLiter || ''}
                                 onChange={(e) => handlePricePerLiterChange(parseInt(e.target.value) || 0)}
                                 min={0}
                             />
@@ -326,7 +439,7 @@ export default function FuelForm({
                     <div className="input-group">
                         <label className="input-label">Total Harga (Rp)</label>
                         <div className="input-icon">
-                            <Wallet size={18} className="icon" />
+                            <Banknote size={18} className="icon" />
                             <input
                                 type="number"
                                 className="input"
