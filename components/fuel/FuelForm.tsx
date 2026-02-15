@@ -126,7 +126,8 @@ export default function FuelForm({
             alert('Berhasil membaca struk! Silakan periksa data yang terisi.');
         } catch (error) {
             console.error('OCR Error:', error);
-            alert('Gagal membaca struk. Pastikan gambar jelas dan pencahayaan cukup.');
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            alert(`Gagal membaca struk: ${errorMessage}. Coba foto lebih dekat atau resolusi lebih kecil.`);
         } finally {
             setIsScanning(false);
             // Reset input so same file can be selected again

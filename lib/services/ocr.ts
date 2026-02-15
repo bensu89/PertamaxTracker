@@ -108,7 +108,7 @@ function compressImage(file: File): Promise<string> {
                 const canvas = document.createElement('canvas');
                 let width = img.width;
                 let height = img.height;
-                const MAX_SIZE = 1024;
+                const MAX_SIZE = 800; // Reduced for better mobile compatibility
 
                 // Calculate new dimensions
                 if (width > height) {
@@ -128,8 +128,8 @@ function compressImage(file: File): Promise<string> {
                 const ctx = canvas.getContext('2d');
                 ctx?.drawImage(img, 0, 0, width, height);
 
-                // Convert directly to base64 with reduced quality (0.7)
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                // Convert directly to base64 with reduced quality (0.6)
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
                 resolve(dataUrl);
             };
             img.onerror = (err) => reject(new Error('Failed to load image for compression'));
